@@ -13,12 +13,16 @@ SET search_path = pg_catalog, pg_temp
 AS $function$
 BEGIN
   IF p_days IS NULL OR p_days NOT IN (0, 7, 30, 90)
-    OR p_institution IS NULL OR p_institution NOT IN ('ALL','IISER','IIT','ICU','OTHER') THEN
+    OR p_institution IS NULL OR p_institution NOT IN ('ALL','IISER','IIT','ICI','ICU','OTHER') THEN
     RAISE EXCEPTION 'Invalid analytics filters' USING ERRCODE = '22023';
   END IF;
   RETURN (
     WITH filtered AS MATERIALIZED (
-      SELECT COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER') AS institution,
+      SELECT 
+        CASE 
+          WHEN UPPER(TRIM(institution)) IN ('ICI', 'ICU') THEN 'ICI'
+          ELSE COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER')
+        END AS institution,
         COALESCE(NULLIF(TRIM(category), ''), 'Unspecified') AS category,
         COALESCE(NULLIF(TRIM(department), ''), 'Unspecified') AS department,
         personnel_type, status, printed_count, zone_a, zone_b, zone_c, COALESCE(office_id, 'unassigned') AS office_id,
@@ -27,7 +31,11 @@ BEGIN
       FROM public.passes
       WHERE (p_days = 0 OR (created_at AT TIME ZONE 'Asia/Kolkata')::date >=
         (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date - (p_days - 1))
-      AND (p_institution = 'ALL' OR COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER') = p_institution)
+      AND (
+        p_institution = 'ALL' 
+        OR (p_institution IN ('ICI', 'ICU') AND UPPER(TRIM(institution)) IN ('ICI', 'ICU'))
+        OR COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER') = p_institution
+      )
     ), summary AS (
       SELECT COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE printed)::int AS printed,

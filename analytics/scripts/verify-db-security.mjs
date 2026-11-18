@@ -33,7 +33,7 @@ try {
     finally { await client.query('ROLLBACK'); }
     assert.equal(code, '42501', `Expected permission denied for ${sql}`);
   }
-  for (const days of [0,7,30,90]) for (const institution of ['ALL','IISER','IIT','ICU','OTHER']) {
+  for (const days of [0,7,30,90]) for (const institution of ['ALL','IISER','IIT','ICI','ICU','OTHER']) {
     const { rows: [{ data }] } = await client.query('SELECT pass_analytics.snapshot($1,$2) AS data', [days,institution]);
     assert.equal(data.summary.total, data.institutions.reduce((sum,r)=>sum+r.total,0));
     assert.equal(data.summary.total, data.trend.reduce((sum,r)=>sum+r.total,0));
