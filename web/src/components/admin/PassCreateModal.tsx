@@ -7,6 +7,7 @@ import { useDialog } from '../common/useDialog';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
+import { ValidityPeriodSelector } from '../common/ValidityPeriodSelector';
 import { PillButton } from '../common/PillButton';
 import { SignaturePad } from '../badges/SignaturePad';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
@@ -514,6 +515,14 @@ export const PassCreateModal: React.FC<PassCreateModalProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Pass Validity Options */}
+              <ValidityPeriodSelector
+                validFrom={validFrom}
+                validTo={validTo}
+                onChangeValidFrom={setValidFrom}
+                onChangeValidTo={setValidTo}
+              />
 
               {/* Permitted Access Zones */}
               <div className="border-t border-slate-200 pt-3 space-y-2">

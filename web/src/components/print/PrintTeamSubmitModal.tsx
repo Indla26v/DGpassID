@@ -4,6 +4,7 @@ import { useDialog } from '../common/useDialog';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
+import { ValidityPeriodSelector } from '../common/ValidityPeriodSelector';
 import { PillButton } from '../common/PillButton';
 import { SignaturePad } from '../badges/SignaturePad';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
@@ -53,6 +54,8 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   const [mobileNumber, setMobileNumber] = useState('');
   const [govtIdType, setGovtIdType] = useState<GovtIdType>('Aadhaar');
   const [govtIdNumber, setGovtIdNumber] = useState('');
+  const [validFrom, setValidFrom] = useState('2026-11-27');
+  const [validTo, setValidTo] = useState('2026-11-30');
   const [operatorName, setOperatorName] = useState('Print Station Operator');
   const [authoritySigUrl, setAuthoritySigUrl] = useState<string | null>(null);
 
@@ -118,6 +121,8 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
     mobile_number: mobileNumber,
     govt_id_type: govtIdType,
     govt_id_number: govtIdNumber,
+    valid_from: validFrom,
+    valid_to: validTo,
     zone_a: zoneA,
     zone_b: zoneB,
     zone_c: zoneC,
@@ -175,6 +180,8 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
         mobile_number: mobileNumber.trim(),
         govt_id_type: govtIdType,
         govt_id_number: govtIdNumber.trim(),
+        valid_from: validFrom,
+        valid_to: validTo,
         zone_a: zoneA,
         zone_b: zoneB,
         zone_c: zoneC,
@@ -401,6 +408,14 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Pass Validity Options */}
+            <ValidityPeriodSelector
+              validFrom={validFrom}
+              validTo={validTo}
+              onChangeValidFrom={setValidFrom}
+              onChangeValidTo={setValidTo}
+            />
 
             {/* Access Zones */}
             <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">

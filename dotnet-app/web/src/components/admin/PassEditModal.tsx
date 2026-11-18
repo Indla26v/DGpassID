@@ -7,6 +7,7 @@ import { useDialog } from '../common/useDialog';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
+import { ValidityPeriodSelector, toIsoDate } from '../common/ValidityPeriodSelector';
 import { PillButton } from '../common/PillButton';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
 import { AddDepartmentModal } from './AddDepartmentModal';
@@ -52,6 +53,8 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
   const [mobileNumber, setMobileNumber] = useState(pass.mobile_number);
   const [govtIdType, setGovtIdType] = useState<GovtIdType>(pass.govt_id_type);
   const [govtIdNumber, setGovtIdNumber] = useState(pass.govt_id_number);
+  const [validFrom, setValidFrom] = useState(toIsoDate(pass.valid_from, '2026-11-27'));
+  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-11-30'));
   const [status, setStatus] = useState<PassStatus>(pass.status);
 
   const [zoneA, setZoneA] = useState(pass.zone_a);
@@ -117,6 +120,8 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
         mobile_number: mobileNumber.trim(),
         govt_id_type: govtIdType,
         govt_id_number: govtIdNumber.trim(),
+        valid_from: validFrom,
+        valid_to: validTo,
         status,
         office_id: canAssignOffice && isOfficeId(office) ? office : undefined,
         photo_url: photoUrl || undefined,
@@ -163,6 +168,8 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
     mobile_number: mobileNumber,
     govt_id_type: govtIdType,
     govt_id_number: govtIdNumber,
+    valid_from: validFrom,
+    valid_to: validTo,
     status,
     photo_url: photoUrl,
     zone_a: zoneA,
@@ -394,6 +401,14 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
                   />
                 </div>
               </div>
+
+              {/* Pass Validity Options */}
+              <ValidityPeriodSelector
+                validFrom={validFrom}
+                validTo={validTo}
+                onChangeValidFrom={setValidFrom}
+                onChangeValidTo={setValidTo}
+              />
 
               {/* Zones */}
               <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
