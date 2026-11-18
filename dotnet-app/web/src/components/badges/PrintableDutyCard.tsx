@@ -35,7 +35,8 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
   const institutionFullNames: Record<string, string> = {
     IISER: 'INDIAN INSTITUTE OF SCIENCE EDUCATION AND RESEARCH (IISER)',
     IIT: 'INDIAN INSTITUTE OF TECHNOLOGY (IIT) TIRUPATI',
-    ICU: 'INTENSIVE CARE UNIT (ICU) / MEDICAL UNIT',
+    ICI: 'INDIAN CULINARY INSTITUTE (ICI)',
+    ICU: 'INDIAN CULINARY INSTITUTE (ICI)',
   };
   const institutionDisplay = pass.institution
     ? institutionFullNames[pass.institution] || 'INSTITUTION / UNIT NOT SELECTED'

@@ -24,6 +24,7 @@ export interface PassStatistics {
   byInstitution: {
     IISER: number;
     IIT: number;
+    ICI?: number;
     ICU: number;
     Other: number;
   };

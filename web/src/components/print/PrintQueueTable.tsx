@@ -202,7 +202,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
             <option value="">All Units &amp; Agencies</option>
             <option value="IISER">IISER Tirupati</option>
             <option value="IIT">IIT Tirupati</option>
-            <option value="ICU">ICU &amp; Emergency</option>
+            <option value="ICI">ICI: Indian Culinary Institute</option>
             <option value="Other">External Agencies</option>
           </select>
 
@@ -306,7 +306,11 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
                         {pass.full_name}
                       </span>
                       <span className="text-[10px] text-slate-500 font-semibold">
-                        {pass.personnel_type === 'EXTERNAL' ? 'External Agency' : pass.institution}
+                        {pass.personnel_type === 'EXTERNAL'
+                          ? 'External Agency'
+                          : pass.institution === 'ICU'
+                          ? 'ICI'
+                          : pass.institution}
                       </span>
                     </td>
 

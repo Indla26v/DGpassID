@@ -258,7 +258,7 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
                       : 'bg-white text-slate-700'
                   }`}
                 >
-                  Campus Staff (IISER/IIT/ICU)
+                  Campus Staff (IISER / IIT / ICI)
                 </button>
               </div>
 

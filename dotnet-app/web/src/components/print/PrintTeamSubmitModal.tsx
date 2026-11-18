@@ -281,7 +281,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                       : 'bg-white text-slate-700'
                   }`}
                 >
-                  Campus Staff (IISER/IIT/ICU)
+                  Campus Staff (IISER / IIT / ICI)
                 </button>
               </div>
             </div>

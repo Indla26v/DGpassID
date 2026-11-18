@@ -24,6 +24,6 @@ export function parseFilters(url: string): { days: number; institution: string }
   if ([...params.keys()].some(key => !['days', 'institution'].includes(key)) || params.getAll('days').length > 1 || params.getAll('institution').length > 1) return null;
   const rawDays = params.get('days') ?? '0';
   const institution = params.get('institution') ?? 'ALL';
-  if (!['0', '7', '30', '90'].includes(rawDays) || !['ALL', 'IISER', 'IIT', 'ICU', 'OTHER'].includes(institution)) return null;
+  if (!['0', '7', '30', '90'].includes(rawDays) || !['ALL', 'IISER', 'IIT', 'ICI', 'ICU', 'OTHER'].includes(institution)) return null;
   return { days: Number(rawDays), institution };
 }

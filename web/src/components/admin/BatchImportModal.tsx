@@ -28,7 +28,7 @@ export const BatchImportModal: React.FC<BatchImportModalProps> = ({
 Dr. M. Harinath,Sri. M. Venkat,IISER,Faculty/Staff,Department of Physics,+91 94411 22334,Institute ID,IISER-FAC-092,true,true,false
 K. Sai Teja,Sri. K. Prasad,IISER,Student,BS-MS Dual Degree, Earth Sciences,+91 98492 88771,Institute ID,IISER-STU-182,true,true,false
 B. Ramanjaneyulu,Sri. B. Chennaiah,IIT,Worker,Campus Transport & Fleet,+91 94405 11223,Aadhaar,XXXX-XXXX-3344,false,true,true
-Dr. Preethi Nair,Late C. Nair,ICU,Other,Emergency Disaster Medical Response,+91 98481 99001,Aadhaar,XXXX-XXXX-7788,true,true,true`;
+Dr. Preethi Nair,Late C. Nair,ICI,Other,Culinary Logistics Support,+91 98481 99001,Aadhaar,XXXX-XXXX-7788,true,true,true`;
 
   const handleLoadSample = () => {
     setCsvText(sampleCsv);
@@ -66,7 +66,7 @@ Dr. Preethi Nair,Late C. Nair,ICU,Other,Emergency Disaster Medical Response,+91 
           records.push({
             full_name: cols[0],
             father_or_spouse_name: cols[1] || '—',
-            institution: (['IISER', 'IIT', 'ICU'].includes(cols[2]) ? cols[2] : 'Other') as any,
+            institution: (['IISER', 'IIT', 'ICI', 'ICU'].includes(cols[2]) ? (cols[2] === 'ICU' ? 'ICI' : cols[2]) : 'Other') as any,
             category: (['Student', 'Faculty/Staff', 'Worker'].includes(cols[3]) ? cols[3] : 'Other') as any,
             department: cols[4] || 'General Delegation',
             mobile_number: cols[5] || '+91 90000 00000',

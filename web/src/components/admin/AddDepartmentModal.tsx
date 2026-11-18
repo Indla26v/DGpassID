@@ -145,7 +145,7 @@ export const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
             <p className="text-[10px] text-slate-500 mt-1">
               {type === 'EXTERNAL'
                 ? 'Will be listed under External Departments in pass issuance and badge filters.'
-                : 'Will be listed under IISER / IIT / ICU Staff Roles.'}
+                : 'Will be listed under IISER / IIT / ICI Staff Roles.'}
             </p>
           </div>
 

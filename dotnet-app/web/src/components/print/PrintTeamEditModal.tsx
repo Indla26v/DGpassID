@@ -276,7 +276,7 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
                         : 'bg-white text-slate-700'
                     }`}
                   >
-                    Campus Staff (IISER/IIT/ICU)
+                    Campus Staff (IISER / IIT / ICI)
                   </button>
                 </div>
               </div>

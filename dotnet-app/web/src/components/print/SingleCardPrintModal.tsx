@@ -259,7 +259,7 @@ export const SingleCardPrintModal: React.FC<SingleCardPrintModalProps> = ({
 
               {/* Print Instructions */}
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-[11px] leading-relaxed">
-                <strong>Guaranteed 1-Page Print:</strong> Set paper size to <strong>9cm × 12cm</strong> or standard printer sheet. Background graphics will render the official Navy and Crimson bands.
+                <strong>Guaranteed 1-Page Center Print:</strong> Pre-calibrated exact page-center alignment (80mm × 120mm card). Background graphics will render official badge seals.
               </div>
 
               {printError && <p role="alert" className="text-xs font-medium text-rose-700">{printError}</p>}

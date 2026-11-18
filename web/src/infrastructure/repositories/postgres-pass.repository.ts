@@ -143,7 +143,11 @@ export class PostgresPassRepository implements IPassRepository {
     }
 
     if (options.institution) {
-      addClause('institution = ?', options.institution);
+      if (options.institution === 'ICI' || options.institution === 'ICU') {
+        where.push("institution IN ('ICI', 'ICU')");
+      } else {
+        addClause('institution = ?', options.institution);
+      }
     }
 
     if (options.category) {
@@ -225,8 +229,9 @@ export class PostgresPassRepository implements IPassRepository {
       byInstitution: {
         IISER: countBy('institution', 'IISER'),
         IIT: countBy('institution', 'IIT'),
-        ICU: countBy('institution', 'ICU'),
-        Other: total - countBy('institution', 'IISER') - countBy('institution', 'IIT') - countBy('institution', 'ICU'),
+        ICI: countBy('institution', 'ICI') + countBy('institution', 'ICU'),
+        ICU: countBy('institution', 'ICI') + countBy('institution', 'ICU'),
+        Other: total - countBy('institution', 'IISER') - countBy('institution', 'IIT') - countBy('institution', 'ICI') - countBy('institution', 'ICU'),
       },
       byCategory: {
         Student: countBy('category', 'Student'),

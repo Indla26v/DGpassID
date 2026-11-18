@@ -283,7 +283,7 @@ export const SingleCardPrintModal: React.FC<SingleCardPrintModalProps> = ({
 
               {/* Print Instructions */}
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-[11px] leading-relaxed">
-                <strong>Guaranteed 1-Page Letter Print:</strong> Pre-calibrated margins (0.5" top, 0.43" left, 2.47" right, 3.14" bottom) on Letter paper. Background graphics will render official badge seals.
+                <strong>Guaranteed 1-Page Center Print:</strong> Pre-calibrated exact page-center alignment (80mm × 120mm card). Background graphics will render official badge seals.
               </div>
 
               {/* Actions */}

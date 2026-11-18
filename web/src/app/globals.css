@@ -41,24 +41,16 @@
   box-sizing: border-box;
 }
 
-/* Exact Print Isolation for Duty Access Cards (Default Letter Layout: 0.5" top, 0.43" left, 2.47" right, 3.14" bottom) */
+/* Exact Print Isolation for Duty Access Cards (Exact Page-Center Alignment) */
 @page {
-  size: letter portrait;
-  margin-top: 0.5in !important;
-  margin-left: 0.43in !important;
-  margin-right: 2.47in !important;
-  margin-bottom: 3.14in !important;
-  margin: 0.5in 2.47in 3.14in 0.43in !important;
+  size: portrait;
+  margin: 0 !important;
 }
 
 @media print {
   @page {
-    size: letter portrait;
-    margin-top: 0.5in !important;
-    margin-left: 0.43in !important;
-    margin-right: 2.47in !important;
-    margin-bottom: 3.14in !important;
-    margin: 0.5in 2.47in 3.14in 0.43in !important;
+    size: portrait;
+    margin: 0 !important;
   }
 
   * {
@@ -70,10 +62,15 @@
   html, body {
     width: 100% !important;
     height: 100% !important;
+    min-height: 100% !important;
     background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
@@ -89,15 +86,17 @@
     display: none !important;
   }
 
-  /* Single-card print container isolation */
+  /* Single-card print container isolation (centered in the page) */
   #single-card-print-portal {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     position: static !important;
-    width: 80mm !important;
-    height: 120mm !important;
-    max-width: 80mm !important;
-    max-height: 120mm !important;
-    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    margin: auto !important;
     padding: 0 !important;
     background: #ffffff !important;
     overflow: hidden !important;
@@ -110,9 +109,14 @@
   }
 
   .print-only-container {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: 100% !important;
-    margin: 0 !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    margin: auto !important;
     padding: 0 !important;
     background: #ffffff !important;
   }
@@ -126,7 +130,7 @@
     max-height: 120mm !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    margin: 0 !important;
+    margin: auto !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     page-break-after: avoid !important;

@@ -44,7 +44,12 @@ public sealed class Passes(Database db)
             if (!Statuses.Contains(status)) throw new AppException("Invalid pass status.");
             Add("status = ?", status);
         } else if (queue && !filter.ContainsKey("status")) where.Add("status IN ('READY_TO_PRINT', 'PRINTED')");
-        foreach (var key in new[] { "institution", "category" }) if (filter.TryGetValue(key, out var value) && value.Length > 0) Add($"{key} = ?", value);
+        if (filter.TryGetValue("institution", out var instVal) && instVal.Length > 0)
+        {
+            if (instVal is "ICI" or "ICU") where.Add("institution IN ('ICI', 'ICU')");
+            else Add("institution = ?", instVal);
+        }
+        if (filter.TryGetValue("category", out var catVal) && catVal.Length > 0) Add("category = ?", catVal);
         if (filter.TryGetValue("zone", out var zone) && zone is "A" or "B" or "C") where.Add("zone_" + zone.ToLowerInvariant() + " = true");
         if (filter.TryGetValue("search", out var search) && search.Length > 0) Add("(full_name ILIKE ? OR pass_number ILIKE ? OR department ILIKE ? OR mobile_number ILIKE ?)", "%" + search + "%");
         var clause = where.Count == 0 ? "" : " WHERE " + string.Join(" AND ", where);
@@ -258,7 +263,7 @@ public sealed class Passes(Database db)
         long Count(string key, string value) => rows.Where(r => (string)r[key]! == value).Sum(r => (long)r["n"]!);
         var total = rows.Sum(r => (long)r["n"]!);
         return new { total, offices, draft = Count("status", "DRAFT"), pendingApproval = Count("status", "PENDING_APPROVAL"), approved = Count("status", "APPROVED"), readyToPrint = Count("status", "READY_TO_PRINT"), printed = Count("status", "PRINTED"), issued = Count("status", "ISSUED"), revoked = Count("status", "REVOKED"),
-            byInstitution = new { IISER = Count("institution", "IISER"), IIT = Count("institution", "IIT"), ICU = Count("institution", "ICU"), Other = total - Count("institution", "IISER") - Count("institution", "IIT") - Count("institution", "ICU") },
+            byInstitution = new { IISER = Count("institution", "IISER"), IIT = Count("institution", "IIT"), ICI = Count("institution", "ICI") + Count("institution", "ICU"), ICU = Count("institution", "ICI") + Count("institution", "ICU"), Other = total - Count("institution", "IISER") - Count("institution", "IIT") - Count("institution", "ICI") - Count("institution", "ICU") },
             byCategory = new { Student = Count("category", "Student"), Faculty = Count("category", "Faculty/Staff"), Worker = Count("category", "Worker"), Other = total - Count("category", "Student") - Count("category", "Faculty/Staff") - Count("category", "Worker") } };
     }
 }

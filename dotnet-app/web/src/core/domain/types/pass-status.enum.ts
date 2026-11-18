@@ -7,7 +7,7 @@ export type PassStatus =
   | 'ISSUED'
   | 'REVOKED';
 
-export type InstitutionType = 'IISER' | 'IIT' | 'ICU' | 'Other';
+export type InstitutionType = 'IISER' | 'IIT' | 'ICI' | 'ICU' | 'Other';
 
 export type CategoryType = 'Student' | 'Faculty/Staff' | 'Worker' | 'Other';
 

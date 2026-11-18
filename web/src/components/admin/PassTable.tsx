@@ -134,6 +134,7 @@ export const PassTable: React.FC<PassTableProps> = ({
         return 'bg-[#0B2545]/10 text-[#0B2545] border-[#0B2545]/30';
       case 'IIT':
         return 'bg-[#8B1A1A]/10 text-[#8B1A1A] border-[#8B1A1A]/30';
+      case 'ICI':
       case 'ICU':
         return 'bg-amber-100 text-amber-800 border-amber-300';
       default:
@@ -190,7 +191,7 @@ export const PassTable: React.FC<PassTableProps> = ({
             <option value="">All Units &amp; Agencies</option>
             <option value="IISER">IISER Tirupati</option>
             <option value="IIT">IIT Tirupati</option>
-            <option value="ICU">ICU Emergency</option>
+            <option value="ICI">ICI: Indian Culinary Institute</option>
             <option value="Other">External Agencies</option>
           </select>
 
@@ -313,6 +314,8 @@ export const PassTable: React.FC<PassTableProps> = ({
                       >
                         {pass.institution === 'Other'
                           ? pass.institution_other || 'External'
+                          : pass.institution === 'ICU'
+                          ? 'ICI'
                           : pass.institution}
                       </span>
                       <span className="text-[10px] text-slate-500">{pass.mobile_number}</span>

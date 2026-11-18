@@ -344,7 +344,7 @@ export const PassCreateModal: React.FC<PassCreateModalProps> = ({
                         : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                     }`}
                   >
-                    Campus Staff (IISER / IIT / ICU)
+                    Campus Staff (IISER / IIT / ICI)
                   </button>
                 </div>
               </div>
