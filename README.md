@@ -51,5 +51,5 @@ For a local rollout check, run both backends against the same disposable Postgre
 ### Design & Architecture Highlights
 - **SOLID Principles**: Clean separation of Domain entities, Repositories, Services, and Route Handlers.
 - **Security & RBAC**: PBKDF2-SHA512 password hashing (210,000 iterations), HttpOnly SameSite Strict session cookies, role policies, and login throttling.
-- **Physical Card Standard**: Strict 90mm × 120mm isolated badge printing and 4-per-page A4 sheet printing.
+- **Physical Card Standard**: Strict 80mm × 120mm (8cm × 12cm) isolated badge printing and 4-per-page A4 sheet printing.
 - **UI Compliance**: Rounded corners, pill-shaped buttons, dynamic modern design, and zero emojis.

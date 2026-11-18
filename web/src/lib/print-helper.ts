@@ -82,10 +82,10 @@ export function printSingleBadge(element: HTMLElement, title: string = 'Duty Acc
               color-adjust: exact !important;
             }
             #print-root {
-              width: 85mm !important;
-              height: 130mm !important;
-              max-width: 85mm !important;
-              max-height: 130mm !important;
+              width: 80mm !important;
+              height: 120mm !important;
+              max-width: 80mm !important;
+              max-height: 120mm !important;
               margin: 0 !important;
               padding: 0 !important;
               overflow: hidden !important;
@@ -113,10 +113,10 @@ export function printSingleBadge(element: HTMLElement, title: string = 'Duty Acc
             color-adjust: exact !important;
           }
           #print-root {
-            width: 85mm !important;
-            height: 130mm !important;
-            max-width: 85mm !important;
-            max-height: 130mm !important;
+            width: 80mm !important;
+            height: 120mm !important;
+            max-width: 80mm !important;
+            max-height: 120mm !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: hidden !important;
@@ -128,12 +128,12 @@ export function printSingleBadge(element: HTMLElement, title: string = 'Duty Acc
             break-before: avoid !important;
           }
           .printable-card-size {
-            width: 85mm !important;
-            height: 130mm !important;
-            min-width: 85mm !important;
-            max-width: 85mm !important;
-            min-height: 130mm !important;
-            max-height: 130mm !important;
+            width: 80mm !important;
+            height: 120mm !important;
+            min-width: 80mm !important;
+            max-width: 80mm !important;
+            min-height: 120mm !important;
+            max-height: 120mm !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             margin: 0 !important;

@@ -9,7 +9,7 @@ import { PassEntity } from '@/core/domain/entities/pass.entity';
 import { printSingleBadge } from '@/lib/print-helper';
 import { X, Printer, RotateCcw } from 'lucide-react';
 
-const CARD_WIDTH = 90 * 96 / 25.4;
+const CARD_WIDTH = 80 * 96 / 25.4;
 const CARD_HEIGHT = 120 * 96 / 25.4;
 
 interface SingleCardPrintModalProps {
@@ -119,7 +119,7 @@ export const SingleCardPrintModal: React.FC<SingleCardPrintModalProps> = ({
           position: 'fixed',
           top: '-9999px',
           left: '-9999px',
-          width: '90mm',
+          width: '80mm',
           height: '120mm',
           overflow: 'hidden',
           visibility: 'hidden',
@@ -176,7 +176,7 @@ export const SingleCardPrintModal: React.FC<SingleCardPrintModalProps> = ({
               {/* Header info & Zoom Controls */}
               <div className="flex flex-wrap items-center justify-between w-full mb-3 text-xs">
                 <span className="font-extrabold text-[#0B2545] uppercase tracking-wide text-[11px]">
-                  Front Side Duty Pass (9cm × 12cm)
+                  Front Side Duty Pass (8cm × 12cm)
                 </span>
 
                 <div className="flex items-center gap-1 text-[11px] text-slate-500">
@@ -214,7 +214,7 @@ export const SingleCardPrintModal: React.FC<SingleCardPrintModalProps> = ({
               </div>
 
               <div className="w-full text-center mt-3 text-[11px] font-bold text-slate-500">
-                Single-page front print: 9.0 cm (W) × 12.0 cm (H)
+                Single-page front print: 8.0 cm (W) × 12.0 cm (H)
               </div>
             </div>
 

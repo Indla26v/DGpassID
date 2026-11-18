@@ -30,14 +30,14 @@
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25), inset 0 0 6px rgba(255, 255, 255, 0.85);
 }
 
-/* Exact Physical Card Dimensions: 8.5cm (85mm) Width x 13cm (130mm) Height */
+/* Exact Physical Card Dimensions: 8cm (80mm) Width x 12cm (120mm) Height */
 .printable-card-size {
-  width: 85mm;
-  height: 130mm;
-  min-width: 85mm;
-  max-width: 85mm;
-  min-height: 130mm;
-  max-height: 130mm;
+  width: 80mm;
+  height: 120mm;
+  min-width: 80mm;
+  max-width: 80mm;
+  min-height: 120mm;
+  max-height: 120mm;
   box-sizing: border-box;
 }
 
@@ -93,10 +93,10 @@
   #single-card-print-portal {
     display: block !important;
     position: static !important;
-    width: 85mm !important;
-    height: 130mm !important;
-    max-width: 85mm !important;
-    max-height: 130mm !important;
+    width: 80mm !important;
+    height: 120mm !important;
+    max-width: 80mm !important;
+    max-height: 120mm !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -118,12 +118,12 @@
   }
 
   .printable-card-size {
-    width: 85mm !important;
-    height: 130mm !important;
-    min-width: 85mm !important;
-    max-width: 85mm !important;
-    min-height: 130mm !important;
-    max-height: 130mm !important;
+    width: 80mm !important;
+    height: 120mm !important;
+    min-width: 80mm !important;
+    max-width: 80mm !important;
+    min-height: 120mm !important;
+    max-height: 120mm !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 !important;
