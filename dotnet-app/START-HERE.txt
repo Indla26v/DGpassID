@@ -1,0 +1,48 @@
+CONFERENCE PASS MANAGEMENT — .NET FOR WINDOWS
+
+RECOMMENDED: RUN THE INSTALLER
+Open DgpPass-Setup-x64.exe. Setup installs the app, creates desktop and Start
+menu shortcuts, installs WebView2 if needed and configures the Neon connection.
+Click Finish to open the login screen. Use username admin or print and the
+separate password supplied to you. No database setup form is needed.
+
+PORTABLE PACKAGE
+
+1. Extract this entire folder, then open DgpPass.exe.
+2. On this configured Windows account, the Neon connection is already encrypted
+   and saved. Sign in with username admin or print and the password supplied.
+3. admin opens administration; print opens ID Print Team production.
+
+The standalone .NET backend also loads this saved Neon connection by default.
+DATABASE_URL_POOLED overrides DATABASE_URL, which overrides the saved profile.
+Admin and print accounts share the same database and connection pool per backend.
+
+ON ANY COMPUTER / NEW LAPTOP
+Both the installer and the portable package automatically load the preconfigured
+Neon database connection on first launch and encrypt it for the active Windows
+user account (%LOCALAPPDATA%\DgpPass\connection.dat). No manual database setup or
+connection entry is required on any new laptop.
+
+Just launch the application and sign in with your credentials (admin or print).
+
+ADMINISTRATOR CONFIGURATION
+To change the connection mode or switch to a hosted server:
+Run: DgpPass.exe --configure
+
+WINDOW CONTROLS AND LOGO
+The normal Windows title bar provides minimize, maximize, close and dragging.
+Initial window size fits your usable display. The app has a custom shield/pass
+logo. The extra reload/connection/status toolbar is hidden.
+
+ADMIN TO PRINT TEAM
+Choose Create & send to ID Print Team when creating a pass. Use Send to ID Team
+for an existing draft/approved pass, or Approve & send for a pending submission.
+Print operators receive these passes automatically in Ready to Print; their
+queue refreshes every 15 seconds.
+
+PRINTING
+Single badges: 90 x 120 mm, actual size / 100%, background graphics enabled.
+Batch sheets: A4, actual size / 100%, four badges per page.
+Print counts record authorized print requests; verify physical printer output.
+
+These builds are unsigned. Production code signing is not included.

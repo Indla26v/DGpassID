@@ -1,0 +1,5 @@
+scripts/
+db/
+SECURITY.md
+.env*
+*.tsbuildinfo

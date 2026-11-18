@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import ts from 'typescript';
+const source = fs.readFileSync(new URL('../src/lib/request-guard.ts',import.meta.url),'utf8');
+const js = ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
+const { allowRequest, parseFilters } = await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+const base = 'https://example.com/api/analytics';
+for (const q of ['?days=0&days=7','?days=0.0','?days=','?days=1e0','?days=-1','?days=999','?institution=IISER%27%20OR%201%3D1--','?sql=SELECT','?institution=ALL&institution=IIT','?x='+ 'a'.repeat(300)]) assert.equal(parseFilters(base+q),null,q);
+for (const days of [0,7,30,90]) for (const institution of ['ALL','IISER','IIT','ICU','OTHER']) assert.deepEqual(parseFilters(`${base}?days=${days}&institution=${institution}`),{days,institution});
+for (let i=0;i<60;i++) assert.equal(allowRequest('test-client',1000),true);
+assert.equal(allowRequest('test-client',1000),false);
+assert.equal(allowRequest('second-client',1000),true);
+assert.equal(allowRequest('test-client',61000),true);
+console.log('PASS: strict filters, injection rejection, request throttling and expiry.');
