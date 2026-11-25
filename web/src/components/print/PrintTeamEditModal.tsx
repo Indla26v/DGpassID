@@ -1,10 +1,10 @@
 'use client';
+import { PassDetailsGate } from '../common/PassDetailsGate';
 
 import { useDialog } from '../common/useDialog';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
-import { ValidityPeriodSelector, toIsoDate } from '../common/ValidityPeriodSelector';
 import { PillButton } from '../common/PillButton';
 import { SignaturePad } from '../badges/SignaturePad';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
@@ -16,10 +16,9 @@ import {
 } from '@/core/domain/entities/pass.entity';
 import {
   InstitutionType,
-  CategoryType,
   GovtIdType,
 } from '@/core/domain/types/pass-status.enum';
-import { X, Edit3, Camera, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Edit3, Camera, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface PrintTeamEditModalProps {
   pass: PassEntity | null;
@@ -30,7 +29,9 @@ interface PrintTeamEditModalProps {
 
 export const PrintTeamEditModal: React.FC<PrintTeamEditModalProps> = (props) => {
   if (!props.isOpen || !props.pass) return null;
-  return <PrintTeamEditModalContent {...props} pass={props.pass} key={props.pass.id} />;
+  return <PassDetailsGate id={props.pass.id} key={props.pass.id} onClose={props.onClose}>
+    {pass => <PrintTeamEditModalContent {...props} pass={pass} />}
+  </PassDetailsGate>;
 };
 
 const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> & { pass: PassEntity }> = ({
@@ -69,12 +70,10 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
     pass.govt_id_type || 'Aadhaar'
   );
   const [govtIdNumber, setGovtIdNumber] = useState(pass.govt_id_number || '');
-  const [validFrom, setValidFrom] = useState(toIsoDate(pass.valid_from, '2026-11-27'));
-  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-11-30'));
-  const [operatorName, setOperatorName] = useState('Print Station Operator');
+  const operatorName = 'Print Station Operator';
 
-  const [zoneA, setZoneA] = useState(pass.zone_a ?? true);
-  const [zoneB, setZoneB] = useState(pass.zone_b ?? true);
+  const [zoneA, setZoneA] = useState(Boolean(pass.zone_a));
+  const [zoneB, setZoneB] = useState(Boolean(pass.zone_b));
   const [zoneC, setZoneC] = useState(pass.zone_c ?? false);
 
   const [photoUrl, setPhotoUrl] = useState<string>(pass.photo_url || '');
@@ -124,8 +123,6 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
     mobile_number: mobileNumber,
     govt_id_type: govtIdType,
     govt_id_number: govtIdNumber,
-    valid_from: validFrom,
-    valid_to: validTo,
     zone_a: zoneA,
     zone_b: zoneB,
     zone_c: zoneC,
@@ -181,8 +178,6 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
         mobile_number: mobileNumber.trim(),
         govt_id_type: govtIdType,
         govt_id_number: govtIdNumber.trim(),
-        valid_from: validFrom,
-        valid_to: validTo,
         zone_a: zoneA,
         zone_b: zoneB,
         zone_c: zoneC,
@@ -400,13 +395,6 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
                 </div>
               </div>
 
-              {/* Pass Validity Options */}
-              <ValidityPeriodSelector
-                validFrom={validFrom}
-                validTo={validTo}
-                onChangeValidFrom={setValidFrom}
-                onChangeValidTo={setValidTo}
-              />
 
               {/* Access Zones */}
               <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">

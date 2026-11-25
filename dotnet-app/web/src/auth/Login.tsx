@@ -142,6 +142,3 @@ export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
     </main>
   );
 };
-
-export default Login;
-

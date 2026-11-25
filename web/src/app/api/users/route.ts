@@ -4,6 +4,7 @@ import { authorizeRequest } from '@/lib/auth/session-helper';
 import { hashPassword } from '@/lib/auth/password';
 import { isOfficeId } from '@/core/domain/offices';
 import { UserRole } from '@/core/domain/entities/user.entity';
+import { parsePolicePrintScope } from '@/core/domain/police-print-scope';
 
 export async function GET(req: Request) {
   const auth = await authorizeRequest(req, ['ADMIN'], true);
@@ -36,9 +37,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Use a password of 12–128 characters.' }, { status: 400 });
     }
 
-    if (!['ADMIN', 'PRINT_TEAM'].includes(role)) {
-      return NextResponse.json({ error: 'Role must be ADMIN or PRINT_TEAM.' }, { status: 400 });
+    if (!['ADMIN', 'PRINT_TEAM', 'POLICE_PRINT', 'BANDOBAST_OFFICER'].includes(role)) {
+      return NextResponse.json({ error: 'Choose a valid role.' }, { status: 400 });
     }
+    const scope = role === 'POLICE_PRINT' || role === 'BANDOBAST_OFFICER' ? parsePolicePrintScope(body.policePrintScope) : [];
+    if (!scope) return NextResponse.json({ error: 'Select at least one valid police zone or sector.' }, { status: 400 });
 
     const officeId = body.officeId || null;
     if (officeId !== null && (role !== 'ADMIN' || !isOfficeId(officeId))) {
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = hashPassword(password);
-    const created = await services.userRepository.create(email, name, role, passwordHash, officeId);
+    const created = await services.userRepository.create(email, name, role, passwordHash, officeId, scope);
 
     await services.auditRepository.createLog({
       action: 'USER_CREATED',
@@ -77,6 +80,19 @@ export async function PATCH(req: Request) {
   try {
     const body = await req.json();
     const { id, is_active } = body;
+    if (id && 'policePrintScope' in body) {
+      const scope = parsePolicePrintScope(body.policePrintScope);
+      if (!scope) return NextResponse.json({ error: 'Select at least one valid police zone or sector.' }, { status: 400 });
+      const updated = await services.userRepository.setPolicePrintScope(id, scope);
+      if (!updated) return NextResponse.json({ error: 'Police print or zone/sector officer account not found.' }, { status: 404 });
+      await services.auditRepository.createLog({
+        action: 'POLICE_PRINT_SCOPE_UPDATED',
+        performed_by: auth.user.email,
+        user_role: 'ADMIN',
+        details: `Updated zone/sector assignments for account ${id}.`,
+      });
+      return NextResponse.json({ success: true });
+    }
 
     if (!id || typeof is_active !== 'boolean') {
       return NextResponse.json({ error: 'Account ID and valid is_active status are required.' }, { status: 400 });

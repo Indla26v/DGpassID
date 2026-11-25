@@ -4,20 +4,18 @@ import React from 'react';
 import { PassEntity } from '@/core/domain/entities/pass.entity';
 import { CollectionFeedback, CollectionPagination } from '../common/CollectionFeedback';
 import { PillButton } from '../common/PillButton';
+import { CustomSelect } from '../common/CustomSelect';
 import {
   Printer,
-  CheckCircle2,
   Clock,
   Layers,
   Search,
-  Filter,
-  Eye,
   RotateCw,
   Plus,
-  ShieldAlert,
   Edit3,
 } from 'lucide-react';
 import { InstitutionType, CategoryType } from '@/core/domain/types/pass-status.enum';
+import { displayRank } from '@/core/domain/ranks';
 
 interface PrintQueueTableProps {
   passes: PassEntity[];
@@ -45,7 +43,16 @@ interface PrintQueueTableProps {
   onOpenSubmitModal: () => void;
   onEditPass?: (pass: PassEntity) => void;
   onRefresh: () => void;
+  /** Police Force queue: police columns, no campus submission or approval step. */
+  police?: boolean;
 }
+
+const queueStatuses = [
+  { id: 'READY_TO_PRINT', label: 'Ready for Print' },
+  { id: 'PENDING_APPROVAL', label: 'Awaiting Approval' },
+  { id: 'PRINTED', label: 'Printed' },
+  { id: 'ALL', label: 'All Entries' },
+] as const;
 
 export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
   passes,
@@ -67,6 +74,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
   onOpenSubmitModal,
   onEditPass,
   onRefresh,
+  police = false,
 }) => {
   // Only ready to print passes can be batch selected
   const printablePasses = passes.filter((p) => p.status === 'READY_TO_PRINT' || p.status === 'PRINTED');
@@ -74,21 +82,22 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
   const hasFilters = Boolean(search || institutionFilter || categoryFilter);
 
   return (
-    <section aria-labelledby="queue-title" className="data-panel space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+    <section aria-labelledby="queue-title" className="operations-panel operations-enter space-y-3 p-3 sm:p-4">
       {/* Top Banner for ID Print Team */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
           <h3 id="queue-title" className="text-base font-semibold text-[#0B2545] flex items-center gap-2">
             <Printer className="w-5 h-5 text-[#8B1A1A]" />
-            <span>Production queue</span>
+            <span>{police ? 'Police ID card print queue' : 'Production queue'}</span>
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Official 9cm × 12cm duty passes, from submission to issue.
+            {police ? 'Print and reprint duty ID cards for officers with a zone, sector and photo.' : 'Review submissions and print cleared passes.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Print Team Add Details Button */}
+          {!police && (
           <PillButton
             variant="crimson"
             size="sm"
@@ -97,6 +106,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
           >
             Submit New Pass
           </PillButton>
+          )}
 
           {selectedIds.length > 0 && (
             <PillButton
@@ -120,108 +130,67 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
         </div>
       </div>
 
-      {/* Production Queue Status Tabs */}
-      <div className="queue-tabs flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4" aria-label="Queue status">
-        <button
-          type="button"
-          aria-pressed={statusTab === 'READY_TO_PRINT'}
-          onClick={() => onStatusTabChange('READY_TO_PRINT')}
-          className={`min-h-10 px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-            statusTab === 'READY_TO_PRINT'
-              ? 'bg-[#8B1A1A] text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span>Ready for Print</span>
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={statusTab === 'PENDING_APPROVAL'}
-          onClick={() => onStatusTabChange('PENDING_APPROVAL')}
-          className={`min-h-10 px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-            statusTab === 'PENDING_APPROVAL'
-              ? 'bg-purple-800 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          <span>Awaiting Approval</span>
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={statusTab === 'PRINTED'}
-          onClick={() => onStatusTabChange('PRINTED')}
-          className={`min-h-10 px-3.5 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-            statusTab === 'PRINTED'
-              ? 'bg-emerald-800 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>Printed</span>
-        </button>
-
-        <button
-          type="button"
-          aria-pressed={statusTab === 'ALL'}
-          onClick={() => onStatusTabChange('ALL')}
-          className={`min-h-10 px-3.5 py-2 rounded-lg text-xs font-bold transition ${
-            statusTab === 'ALL'
-              ? 'bg-[#0B2545] text-white shadow-xs'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-          }`}
-        >
-          All Entries
-        </button>
+      <div role="group" aria-label="Queue status" className="queue-tabs flex w-fit max-w-full flex-wrap gap-1 rounded-3xl border border-slate-200 bg-slate-50 p-1 sm:rounded-full">
+        {queueStatuses.filter(({ id }) => !police || id !== 'PENDING_APPROVAL').map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={statusTab === id}
+            onClick={() => onStatusTabChange(id)}
+            className={`operations-action min-h-9 whitespace-nowrap px-3 text-xs font-semibold ${statusTab === id
+              ? 'bg-police-crimson text-white shadow-sm'
+              : 'text-slate-700 hover:bg-white hover:text-police-navy'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Filters and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="relative w-full min-w-0 flex-1 sm:min-w-[240px] sm:max-w-md">
+      <div className={`grid min-w-0 grid-cols-1 gap-2 ${police ? '' : 'sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_repeat(2,minmax(0,1fr))]'}`}>
+        <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="search"
             aria-label="Search print queue"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search name, pass ID, department…"
-            className="w-full min-h-11 pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#8B1A1A] bg-slate-50 focus:bg-white"
+            placeholder={police ? 'Search name, pass ID, police ID, rank…' : 'Search name, pass ID, department…'}
+            className="operations-input pl-10 pr-4"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            aria-label="Filter by institution"
-            value={institutionFilter || ''}
-            onChange={(e) => onInstitutionFilterChange((e.target.value as InstitutionType) || undefined)}
-            className="min-h-11 min-w-0 max-w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-300 bg-white"
-          >
-            <option value="">All Units &amp; Agencies</option>
-            <option value="IISER">IISER Tirupati</option>
-            <option value="IIT">IIT Tirupati</option>
-            <option value="ICI">ICI: Indian Culinary Institute</option>
-            <option value="Other">External Agencies</option>
-          </select>
+        {!police && <>
+        <CustomSelect
+          ariaLabel="Filter by institution"
+          value={institutionFilter || ''}
+          onChange={(value) => onInstitutionFilterChange((value as InstitutionType) || undefined)}
+          options={[
+            { value: '', label: 'All Units & Agencies' },
+            { value: 'IISER', label: 'IISER Tirupati' },
+            { value: 'IIT', label: 'IIT Tirupati' },
+            { value: 'ICI', label: 'ICI: Indian Culinary Institute' },
+            { value: 'Other', label: 'External Agencies' },
+          ]}
+        />
 
-          <select
-            aria-label="Filter by category"
-            value={categoryFilter || ''}
-            onChange={(e) => onCategoryFilterChange((e.target.value as CategoryType) || undefined)}
-            className="min-h-11 min-w-0 max-w-full px-3 py-2 text-xs font-medium rounded-xl border border-slate-300 bg-white"
-          >
-            <option value="">All Categories</option>
-            <option value="Student">Students</option>
-            <option value="Faculty/Staff">Faculty &amp; Staff</option>
-            <option value="Worker">Workers &amp; Maintenance</option>
-            <option value="Other">Other Agencies</option>
-          </select>
-        </div>
+        <CustomSelect
+          ariaLabel="Filter by category"
+          value={categoryFilter || ''}
+          onChange={(value) => onCategoryFilterChange((value as CategoryType) || undefined)}
+          options={[
+            { value: '', label: 'All Categories' },
+            { value: 'Student', label: 'Students' },
+            { value: 'Faculty/Staff', label: 'Faculty & Staff' },
+            { value: 'Worker', label: 'Workers & Maintenance' },
+            { value: 'Other', label: 'Other Agencies' },
+          ]}
+        />
+        </>}
       </div>
 
-      {hasFilters && <div className="flex items-center justify-between text-[11px] text-slate-500"><span>Filtered queue results</span><button type="button" onClick={onClearFilters} className="min-h-8 rounded-lg px-2 font-semibold text-[#0B2545] hover:bg-slate-100">Clear filters</button></div>}
+      {hasFilters && <div className="flex items-center justify-between text-[11px] text-slate-500"><span>Filtered queue results</span><button type="button" onClick={onClearFilters} className="min-h-8 operations-action px-2.5 font-semibold text-police-navy hover:bg-slate-100">Clear filters</button></div>}
 
       {/* Batch Select Helper Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 bg-slate-50 px-3.5 py-2 rounded-2xl border border-slate-200">
@@ -248,7 +217,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
       </div>
 
       {/* Queue Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200">
+      <div role="region" aria-label="Pass records" tabIndex={0} className="overflow-x-auto rounded-2xl border border-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-police-crimson">
         <table className="workspace-table w-full text-left text-xs" aria-busy={loading}>
           <caption className="sr-only">Print production queue</caption>
           <thead className="bg-[#8B1A1A] text-white">
@@ -256,7 +225,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
               <th className="py-3 px-3.5 w-10"></th>
               <th className="py-3 px-3.5 font-bold">Pass ID</th>
               <th className="py-3 px-3.5 font-bold">Cardholder &amp; Classification</th>
-              <th className="py-3 px-3.5 font-bold">Department / Agency</th>
+              <th className="py-3 px-3.5 font-bold">{police ? 'Zone & sector' : 'Department / Agency'}</th>
               <th className="py-3 px-3.5 font-bold">Status</th>
               <th className="py-3 px-3.5 font-bold text-center">Print Runs</th>
               <th className="py-3 px-3.5 font-bold text-right">Action</th>
@@ -306,20 +275,32 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
                         {pass.full_name}
                       </span>
                       <span className="text-[10px] text-slate-500 font-semibold">
-                        {pass.personnel_type === 'EXTERNAL'
-                          ? 'External Agency'
+                        {police ? [displayRank(pass.rank || pass.designation_or_trade), pass.police_unit_district, pass.police_id_number].filter(Boolean).join(' · ')
+                          : pass.personnel_type === 'EXTERNAL'
+                          ? (pass.institution ? `${pass.institution} · External Agency` : (pass.is_imported ? 'External Agency (Venue Pending)' : 'External Agency'))
                           : pass.institution === 'ICU'
                           ? 'ICI'
-                          : pass.institution}
+                          : pass.institution || 'Unassigned'}
                       </span>
                     </td>
 
                     {/* Department */}
                     <td className="py-3 px-3.5">
-                      <span className="font-bold text-slate-800 text-[11px] block">
-                        {pass.department}
-                      </span>
-                      <span className="text-[10px] text-slate-500">{pass.category}</span>
+                      {police ? (
+                        pass.police_zone ? (
+                          <>
+                            <span className="font-bold text-slate-800 text-[11px] block">{pass.police_zone}</span>
+                            <span className="text-[10px] text-slate-500">{[pass.police_sector_number, pass.police_sector_name].filter(Boolean).join(' · ')}</span>
+                          </>
+                        ) : <span className="text-[10px] font-semibold text-amber-800">Zone unassigned</span>
+                      ) : (
+                        <>
+                          <span className="font-bold text-slate-800 text-[11px] block">
+                            {pass.department}
+                          </span>
+                          <span className="text-[10px] text-slate-500">{pass.category}</span>
+                        </>
+                      )}
                     </td>
 
                     {/* Status */}

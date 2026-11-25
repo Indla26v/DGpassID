@@ -10,11 +10,8 @@ import {
   Clock,
   Layers,
   Search,
-  Filter,
-  Eye,
   RotateCw,
   Plus,
-  ShieldAlert,
   Edit3,
 } from 'lucide-react';
 import { InstitutionType, CategoryType } from '@/core/domain/types/pass-status.enum';

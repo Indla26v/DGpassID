@@ -2,9 +2,13 @@
 CREATE SCHEMA IF NOT EXISTS pass_analytics AUTHORIZATION dgp_analytics_executor;
 REVOKE ALL ON SCHEMA pass_analytics FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO dgp_analytics_executor;
-GRANT SELECT (institution, category, department, personnel_type, status,
-  printed_count, created_at, zone_a, zone_b, zone_c, office_id)
-  ON public.passes TO dgp_analytics_executor;
+REVOKE SELECT ON public.passes FROM dgp_analytics_executor;
+GRANT SELECT (
+  pass_type, institution, institution_other, category, department, personnel_type, status,
+  printed_count, created_at, zone_a, zone_b, zone_c, office_id,
+  rank, police_unit_district, police_zone, police_sector_number, police_sector_name,
+  security_component, issuing_counter_id, distribution_status, collected_by_officer
+) ON public.passes TO dgp_analytics_executor;
 
 CREATE OR REPLACE FUNCTION pass_analytics.snapshot(p_days integer, p_institution text)
 RETURNS jsonb
@@ -18,8 +22,8 @@ BEGIN
   END IF;
   RETURN (
     WITH filtered AS MATERIALIZED (
-      SELECT 
-        CASE 
+      SELECT
+        CASE
           WHEN UPPER(TRIM(institution)) IN ('ICI', 'ICU') THEN 'ICI'
           ELSE COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER')
         END AS institution,
@@ -29,10 +33,11 @@ BEGIN
         (created_at AT TIME ZONE 'Asia/Kolkata')::date AS day,
         (printed_count > 0 OR status IN ('PRINTED','ISSUED')) AS printed
       FROM public.passes
-      WHERE (p_days = 0 OR (created_at AT TIME ZONE 'Asia/Kolkata')::date >=
+      WHERE COALESCE(pass_type, 'CAMPUS') = 'CAMPUS'
+      AND (p_days = 0 OR (created_at AT TIME ZONE 'Asia/Kolkata')::date >=
         (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Kolkata')::date - (p_days - 1))
       AND (
-        p_institution = 'ALL' 
+        p_institution = 'ALL'
         OR (p_institution IN ('ICI', 'ICU') AND UPPER(TRIM(institution)) IN ('ICI', 'ICU'))
         OR COALESCE(NULLIF(UPPER(TRIM(institution)), ''), 'OTHER') = p_institution
       )
@@ -41,6 +46,7 @@ BEGIN
         COUNT(*) FILTER (WHERE printed)::int AS printed,
         COUNT(*) FILTER (WHERE status = 'READY_TO_PRINT')::int AS ready,
         COUNT(*) FILTER (WHERE status IN ('DRAFT','PENDING_APPROVAL'))::int AS pending,
+        COUNT(*) FILTER (WHERE status = 'APPROVED')::int AS approved,
         COUNT(*) FILTER (WHERE status = 'ISSUED')::int AS issued,
         COUNT(*) FILTER (WHERE status = 'REVOKED')::int AS revoked,
         COALESCE(SUM(printed_count),0)::int AS "printRuns",
@@ -93,6 +99,75 @@ BEGIN
     ), trend AS (
       SELECT TO_CHAR(d.day,'YYYY-MM-DD') AS date,COUNT(f.day)::int AS total
       FROM dates d LEFT JOIN filtered f ON f.day=d.day GROUP BY d.day
+    ), police_rows AS MATERIALIZED (
+      SELECT
+        COALESCE(NULLIF(BTRIM(police_zone), ''), 'Unassigned') AS zone,
+        COALESCE(NULLIF(BTRIM(police_sector_number), ''), 'Unassigned') AS sector_number,
+        COALESCE(NULLIF(BTRIM(rank), ''), 'Unspecified') AS rank,
+        COALESCE(NULLIF(BTRIM(police_unit_district), ''), NULLIF(BTRIM(institution_other), ''), 'Tirupati') AS district,
+        COALESCE(NULLIF(BTRIM(issuing_counter_id), ''), 'Unassigned') AS counter_id,
+        COALESCE(NULLIF(BTRIM(security_component), ''), 'Unspecified') AS security_component,
+        (distribution_status = 'ASSIGNED') AS is_assigned,
+        (distribution_status = 'PENDING_ASSIGNMENT') AS is_pending,
+        (status IN ('PENDING_APPROVAL', 'APPROVED', 'READY_TO_PRINT')) AS is_ready_to_print,
+        (printed_count > 0 OR status IN ('PRINTED', 'ISSUED')) AS is_printed,
+        (distribution_status = 'COLLECTED' OR COALESCE(collected_by_officer, FALSE) OR status = 'ISSUED') AS is_collected,
+        (status = 'REVOKED') AS is_revoked,
+        (NULLIF(BTRIM(police_zone), '') IS NULL) AS is_unassigned_zone
+      FROM public.passes
+      WHERE pass_type = 'POLICE_FORCE'
+    ), police_summary AS (
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "dutyAssigned",
+        COUNT(*) FILTER (WHERE is_pending)::int AS "pendingDuty",
+        COUNT(*) FILTER (WHERE is_ready_to_print)::int AS "readyToPrint",
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected,
+        COUNT(*) FILTER (WHERE is_revoked)::int AS revoked,
+        COUNT(*) FILTER (WHERE is_unassigned_zone)::int AS "unassignedZone"
+      FROM police_rows
+    ), police_zones AS (
+      SELECT zone AS name,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "dutyAssigned",
+        COUNT(*) FILTER (WHERE is_pending)::int AS "pendingDuty",
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected
+      FROM police_rows GROUP BY zone
+    ), police_sectors AS (
+      SELECT zone, sector_number AS "sectorNumber",
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "dutyAssigned",
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected
+      FROM police_rows GROUP BY zone, sector_number
+    ), police_ranks AS (
+      SELECT rank,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "dutyAssigned",
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected
+      FROM police_rows GROUP BY rank
+    ), police_districts AS (
+      SELECT district AS name,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "dutyAssigned",
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected
+      FROM police_rows GROUP BY district
+    ), police_counters AS (
+      SELECT counter_id AS "counterId",
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_printed)::int AS printed,
+        COUNT(*) FILTER (WHERE is_collected)::int AS collected
+      FROM police_rows GROUP BY counter_id
+    ), police_components AS (
+      SELECT security_component AS component,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_assigned)::int AS "assignedCount",
+        COALESCE(ARRAY_AGG(DISTINCT zone) FILTER (WHERE zone <> 'Unassigned'), ARRAY[]::text[]) AS "zonesCovered"
+      FROM police_rows GROUP BY security_component
     )
     SELECT jsonb_build_object(
       'updatedAt', CURRENT_TIMESTAMP,
@@ -108,7 +183,16 @@ BEGIN
       'categories',COALESCE((SELECT jsonb_agg(to_jsonb(c) ORDER BY total DESC,name) FROM categories c),'[]'::jsonb),
       'departments',COALESCE((SELECT jsonb_agg(to_jsonb(d) ORDER BY total DESC,name) FROM departments d),'[]'::jsonb),
       'statuses',COALESCE((SELECT jsonb_agg(to_jsonb(s) ORDER BY total DESC,name) FROM statuses s),'[]'::jsonb),
-      'trend',COALESCE((SELECT jsonb_agg(to_jsonb(t) ORDER BY date) FROM trend t),'[]'::jsonb)
+      'trend',COALESCE((SELECT jsonb_agg(to_jsonb(t) ORDER BY date) FROM trend t),'[]'::jsonb),
+      'police', jsonb_build_object(
+        'summary', (SELECT to_jsonb(ps) FROM police_summary ps),
+        'zones', COALESCE((SELECT jsonb_agg(to_jsonb(pz) ORDER BY total DESC, name) FROM police_zones pz),'[]'::jsonb),
+        'sectors', COALESCE((SELECT jsonb_agg(to_jsonb(psec) ORDER BY zone, "sectorNumber") FROM police_sectors psec),'[]'::jsonb),
+        'ranks', COALESCE((SELECT jsonb_agg(to_jsonb(pr) ORDER BY total DESC, rank) FROM police_ranks pr),'[]'::jsonb),
+        'districts', COALESCE((SELECT jsonb_agg(to_jsonb(pd) ORDER BY total DESC, name) FROM police_districts pd),'[]'::jsonb),
+        'counters', COALESCE((SELECT jsonb_agg(to_jsonb(pc) ORDER BY total DESC, "counterId") FROM police_counters pc),'[]'::jsonb),
+        'securityComponents', COALESCE((SELECT jsonb_agg(to_jsonb(pcomp) ORDER BY total DESC, component) FROM police_components pcomp),'[]'::jsonb)
+      )
     )
   );
 END;

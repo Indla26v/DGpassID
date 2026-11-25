@@ -19,10 +19,9 @@ import {
 } from '@/core/domain/entities/pass.entity';
 import {
   InstitutionType,
-  CategoryType,
   GovtIdType,
 } from '@/core/domain/types/pass-status.enum';
-import { X, Plus, UserPlus, Building, Shield, Camera } from 'lucide-react';
+import { X, Plus, UserPlus, Camera } from 'lucide-react';
 import { CameraCaptureModal } from '../common/CameraCaptureModal';
 
 interface PassCreateModalProps {
@@ -63,7 +62,7 @@ export const PassCreateModal: React.FC<PassCreateModalProps> = ({
   const [selectedStaffRole, setSelectedStaffRole] = useState('Faculty Members');
 
   const [designation, setDesignation] = useState('');
-  const [deptHostel, setDeptHostel] = useState('');
+  const deptHostel = '';
   const [mobileNumber, setMobileNumber] = useState('');
   const [govtIdType, setGovtIdType] = useState<GovtIdType>('Aadhaar');
   const [govtIdNumber, setGovtIdNumber] = useState('');

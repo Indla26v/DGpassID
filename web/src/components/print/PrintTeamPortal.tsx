@@ -1,8 +1,9 @@
 'use client';
 
+import { OperationsHeader } from '../common/OperationsHeader';
+
 import React, { useState, useEffect } from 'react';
 import { usePassCollection, useDebouncedValue } from '../common/usePassCollection';
-import { ChevronRight, Printer, Clock, CheckCircle2 } from 'lucide-react';
 import { PrintQueueTable } from './PrintQueueTable';
 import { SingleCardPrintModal } from './SingleCardPrintModal';
 import { BatchPrintModal } from './BatchPrintModal';
@@ -10,8 +11,17 @@ import { PrintTeamSubmitModal } from './PrintTeamSubmitModal';
 import { PrintTeamEditModal } from './PrintTeamEditModal';
 import { PassEntity } from '@/core/domain/entities/pass.entity';
 import { InstitutionType, CategoryType } from '@/core/domain/types/pass-status.enum';
+import { fetchPrintDetails } from '@/lib/print-details';
+import { policePrintBlocker } from '@/core/domain/police-print';
 
-export const PrintTeamPortal: React.FC = () => {
+export const PrintTeamPortal: React.FC<{ passType?: 'CAMPUS' | 'POLICE_FORCE'; embedded?: boolean }> = ({
+  passType = 'CAMPUS',
+  embedded = false,
+}) => {
+  const police = passType === 'POLICE_FORCE';
+  const [policeBatch, setPoliceBatch] = useState<PassEntity[]>([]);
+  const [batchNotice, setBatchNotice] = useState('');
+  const [preparing, setPreparing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Status Tab Filter
@@ -29,7 +39,7 @@ export const PrintTeamPortal: React.FC = () => {
   const [editingPass, setEditingPass] = useState<PassEntity | null>(null);
 
   const debouncedSearch = useDebouncedValue(search);
-  const params = new URLSearchParams({ status: statusTab });
+  const params = new URLSearchParams({ status: statusTab, pass_type: passType });
   if (institutionFilter) params.set('institution', institutionFilter);
   if (categoryFilter) params.set('category', categoryFilter);
   if (debouncedSearch) params.set('search', debouncedSearch);
@@ -53,15 +63,33 @@ export const PrintTeamPortal: React.FC = () => {
 
   const selectedPasses = queue.filter((p) => selectedIds.includes(p.id));
 
+  // Police badges need photo and duty details before batch printing.
+  const openPoliceBatch = async () => {
+    setPreparing(true);
+    setBatchNotice('');
+    try {
+      const details = await fetchPrintDetails(selectedIds);
+      const ready = details.filter(pass => !policePrintBlocker(pass));
+      if (!ready.length) {
+        setBatchNotice('The selected badges need a zone, sector and photograph before printing.');
+        return;
+      }
+      if (ready.length < details.length) {
+        setBatchNotice(`${details.length - ready.length} selected badge(s) skipped because their zone, sector or photograph is missing.`);
+      }
+      setPoliceBatch(ready);
+    } catch (error) {
+      setBatchNotice(error instanceof Error ? error.message : 'Could not prepare the batch.');
+    } finally {
+      setPreparing(false);
+    }
+  };
+
   return (
-    <div className="portal-enter space-y-6">
-      <div className="space-y-5">
-        <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500"><span>Conference workspace</span><ChevronRight className="h-3 w-3" /><span className="text-[#0B2545]">Print production</span></div>
-        <div><p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8B1A1A]">ID print team</p><h2 className="text-2xl font-semibold tracking-tight text-[#0B2545] sm:text-3xl">Print Production</h2><p className="mt-2 text-sm text-slate-500">Prepare, submit, and print official duty access cards.</p></div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[{ Icon: Clock, step: '01', title: 'Submit details', text: 'Send new passes for admin approval.' }, { Icon: CheckCircle2, step: '02', title: 'Receive clearance', text: 'Approved passes move into your queue.' }, { Icon: Printer, step: '03', title: 'Print & issue', text: 'Print individual cards or a selected batch.' }].map(({ Icon, step, title, text }) => <div key={step} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#8B1A1A]/10 text-[#8B1A1A]"><Icon className="h-4 w-4" /></div><div><p className="text-xs font-semibold text-[#0B2545]"><span className="mr-2 font-mono text-slate-400">{step}</span>{title}</p><p className="mt-1 text-[11px] leading-relaxed text-slate-500">{text}</p></div></div>)}
-        </div>
-      </div>
+    <div className="min-w-0 space-y-4">
+      {!embedded && <OperationsHeader title={police ? 'Police Print Queue' : 'Campus & Agencies Print Queue'}
+        description={police ? 'Print and reprint police duty ID cards.' : 'Submit passes for approval and print or issue cleared cards.'} />}
+      {batchNotice && <p role="status" className="text-sm text-amber-900">{batchNotice}</p>}
       <PrintQueueTable
         passes={queue}
         loading={loading}
@@ -84,7 +112,8 @@ export const PrintTeamPortal: React.FC = () => {
         search={search}
         onSearchChange={setSearch}
         onPrintSingle={(p) => setSinglePrintPass(p)}
-        onTriggerBatchPrint={() => setIsBatchOpen(true)}
+        onTriggerBatchPrint={police ? openPoliceBatch : () => setIsBatchOpen(true)}
+        police={police}
         onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
         onEditPass={(p) => setEditingPass(p)}
         onRefresh={fetchQueue}
@@ -123,6 +152,16 @@ export const PrintTeamPortal: React.FC = () => {
       />
 
       {/* Batch Print Modal */}
+      {police ? (policeBatch.length > 0 && (
+        <BatchPrintModal police selectedPasses={policeBatch} isOpen notice={batchNotice}
+          onClose={() => setPoliceBatch([])}
+          onBatchPrinted={() => {
+            setPoliceBatch([]);
+            setBatchNotice('');
+            setSelectedIds([]);
+            fetchQueue();
+          }} />
+      )) : (
       <BatchPrintModal
         selectedPasses={selectedPasses}
         isOpen={isBatchOpen}
@@ -132,6 +171,8 @@ export const PrintTeamPortal: React.FC = () => {
           fetchQueue();
         }}
       />
+      )}
+      {preparing && <p role="status" className="text-sm text-slate-600">Preparing the batch…</p>}
     </div>
   );
 };

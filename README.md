@@ -46,6 +46,22 @@ Each officer signs in and sets the official image under **Authority Signature**.
 
 For a local rollout check, run both backends against the same disposable PostgreSQL database, apply the schema, and bootstrap a test system administrator. Set `TEST_OFFICE_ADMIN_EMAIL` and `TEST_OFFICE_ADMIN_PASSWORD` and run `node web/scripts/test-office-workflow.mjs http://127.0.0.1:3000 http://127.0.0.1:5080` against that database. The test expects a fresh office configuration and creates test accounts and passes.
 
+### Regional police printing
+
+After the shared schema and office migration, apply [police-force-passes.sql](web/db/police-force-passes.sql), [police-print-operators.sql](web/db/police-print-operators.sql), [apply-authority-signature.sql](web/db/apply-authority-signature.sql), [pass-authority-details.sql](web/db/pass-authority-details.sql), [police-direct-print.sql](web/db/police-direct-print.sql), and [bandobast-deployment.sql](web/db/bandobast-deployment.sql) in that order before running the Next.js app.
+
+### Bandobast deployment
+
+- **Ranks:** ASI, WASI, HC and WHC are stored separately and shown as **ASI/HC**. AR component ranks: RI, RSI, ARSI, ARHC, ARPC.
+- **Roster import:** Zone, Sector, Sub-sector, Point and Date of Birth / Age columns are optional. Rows without them import with no duty posting (and keep any existing posting on re-import); unrecognised values import the officer and show a warning.
+- **Officer Selection (SP):** Police Force → Officer Selection. Pick a rank, districts and a count; Auto-select picks officers at random (ASI/HC: ASI 20% · WASI 5% · HC 70% · WHC 5%, 40% old / 60% young, old = aged 45+ by default). Adjust the ticks and allot them to a zone and sector.
+- **Duty Points:** create a **Zone / sector officer** under Team with the zones or sectors they manage. They sign in to **Duty Points** and place allotted officers on sub-sectors and duty points (seeded from the zonal scheme in `web/src/core/domain/bandobast-points.json`).
+- See [docs/microservices-plan.md](docs/microservices-plan.md) for the plan to split the app into services.
+
+In the web workspace, open **Team**, create a **Police print operator**, and add the zones or individual sectors served by that operator. Multiple sectors can be assigned to one account. Use **Edit assignments** to change them later.
+
+Operators sign in to **Police Force**, filter by zone or sector, and use **Bulk print filtered badges**. By default it loads badges ready to print. Selecting **Printed** loads matching badges for reprinting. Operators can work through large selections in batches of up to 100 badges, with up to four badges per A4 sheet. After the physical handover, use **Issue** on the printed record. Collection desk is optional.
+
 ---
 
 ### Design & Architecture Highlights

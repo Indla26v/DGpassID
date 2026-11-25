@@ -26,10 +26,18 @@ export function isOfficeId(value: unknown): value is OfficeId {
 }
 
 export function canViewTeam(user: { role: string; officeId?: OfficeId | null }) {
-  return user.role === 'ADMIN' && user.officeId === 'district';
+  return managesAccounts(user);
 }
 
 export function managesAccounts(user: { role: string; officeId?: OfficeId | null }) {
+  return user.role === 'ADMIN' && (!user.officeId || user.officeId === 'district');
+}
+
+export function isSubdivisionUser(user: { role: string; officeId?: OfficeId | null }): boolean {
+  return Boolean(user.officeId && user.officeId !== 'district');
+}
+
+export function canImportDistrictProforma(user: { role: string; officeId?: OfficeId | null }) {
   return user.role === 'ADMIN' && (!user.officeId || user.officeId === 'district');
 }
 

@@ -3,13 +3,26 @@
 import React, { useState } from 'react';
 
 interface HeaderLogoProps {
-  type: 'police' | 'iiser';
+  type: 'police' | 'iiser' | 'tirupati-police';
   className?: string;
   size?: number;
 }
 
 export const HeaderLogo: React.FC<HeaderLogoProps> = ({ type, className = '', size = 40 }) => {
   const [error, setError] = useState(false);
+
+  if (type === 'tirupati-police') {
+    return (
+      <img
+        src="/tirupati-district-police-crest.png"
+        alt="Tirupati District Police crest"
+        width={size}
+        height={size}
+        className={`shrink-0 rounded-sm bg-white object-contain ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
 
   if (type === 'police') {
     return (
@@ -74,5 +87,3 @@ export const HeaderLogo: React.FC<HeaderLogoProps> = ({ type, className = '', si
     </div>
   );
 };
-
-export default HeaderLogo;

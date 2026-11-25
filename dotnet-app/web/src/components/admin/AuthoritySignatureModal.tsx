@@ -1,7 +1,7 @@
 'use client';
 
 import { useDialog } from '../common/useDialog';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SignaturePad } from '../badges/SignaturePad';
 import { PillButton } from '../common/PillButton';
 import {
@@ -13,7 +13,6 @@ import {
   AlertCircle,
   FileSignature,
   ZoomIn,
-  ZoomOut,
   Move,
   RotateCw,
   RotateCcw,

@@ -23,10 +23,22 @@ const EDITABLE_FIELDS = [
   'gate_zone_b',
   'zone_c',
   'gate_zone_c',
-  'valid_from',
-  'valid_to',
   'photo_url',
   'cardholder_signature_url',
+  'rank',
+  'police_id_number',
+  'police_unit_district',
+  'police_zone',
+  'police_sector_number',
+  'police_sector_name',
+  'police_point_code',
+  'police_point_name',
+  'date_of_birth',
+  'age_years',
+  'police_custom_sector',
+  'security_component',
+  'custom_security_component',
+  'issuing_counter_id',
 ];
 
 const ADMIN_EXTRA_FIELDS = [
@@ -40,7 +52,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authorizeRequest(req, ['ADMIN', 'PRINT_TEAM']);
+  const auth = await authorizeRequest(req, ['ADMIN', 'PRINT_TEAM', 'POLICE_PRINT']);
   if (auth.errorResponse) return auth.errorResponse;
 
   const { id } = await params;
@@ -49,14 +61,14 @@ export async function GET(
     return NextResponse.json({ error: 'Pass not found.' }, { status: 404 });
   }
 
-  return NextResponse.json(pass);
+  return NextResponse.json(pass, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await authorizeRequest(req, ['ADMIN', 'PRINT_TEAM']);
+  const auth = await authorizeRequest(req, ['ADMIN', 'PRINT_TEAM', 'POLICE_PRINT']);
   if (auth.errorResponse) return auth.errorResponse;
 
   const { id } = await params;
@@ -65,16 +77,40 @@ export async function PUT(
     return NextResponse.json({ error: 'Pass not found.' }, { status: 404 });
   }
 
-  if (auth.user.role === 'PRINT_TEAM' && existing.status !== 'PENDING_APPROVAL') {
-    return NextResponse.json(
-      { error: 'Print operators can edit only passes awaiting approval.' },
-      { status: 403 }
-    );
-  }
-
   try {
     const body = await req.json();
     const isAdmin = auth.user.role === 'ADMIN';
+    if (auth.user.role === 'POLICE_PRINT' && (
+      !body || Object.keys(body).length !== 1 || typeof body.photo_url !== 'string' ||
+      body.photo_url.length > 2_000_000 || !/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/]+=*$/i.test(body.photo_url)
+    )) {
+      return NextResponse.json({ error: 'Police print operators may only upload a badge photograph.' }, { status: 403 });
+    }
+
+    const allowedCounterFields = new Set([
+      'photo_url',
+      'institution',
+      'zone_a',
+      'zone_b',
+      'zone_c',
+      'gate_zone_a',
+      'gate_zone_b',
+      'gate_zone_c',
+      'police_zone',
+      'police_sector_number',
+      'police_sector_name',
+      'police_custom_sector',
+      'security_component',
+      'issuing_counter_id',
+    ]);
+    const isCounterUpdate = Object.keys(body).length > 0 && Object.keys(body).every((k) => allowedCounterFields.has(k));
+
+    if (auth.user.role === 'PRINT_TEAM' && existing.status !== 'PENDING_APPROVAL' && !isCounterUpdate) {
+      return NextResponse.json(
+        { error: 'Print operators can edit only passes awaiting approval.' },
+        { status: 403 }
+      );
+    }
 
     const sanitized: Record<string, unknown> = {};
     for (const field of EDITABLE_FIELDS) {
@@ -126,3 +162,5 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 404 });
   }
 }
+
+export const PATCH = PUT;

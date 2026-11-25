@@ -74,5 +74,3 @@ export const HeaderLogo: React.FC<HeaderLogoProps> = ({ type, className = '', si
     </div>
   );
 };
-
-export default HeaderLogo;

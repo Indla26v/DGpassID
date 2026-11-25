@@ -1,68 +1,34 @@
-export const digitsOnly = (value: string, maxLen?: number) => {
-  const digits = value.replace(/[^0-9]/g, '');
-  return typeof maxLen === 'number' ? digits.slice(0, maxLen) : digits;
-};
-
-export function getGovtIdInputConstraints(idType: string) {
-  switch (idType) {
-    case 'Aadhaar':
-      return {
-        minLength: 12,
-        maxLength: 12,
-        pattern: '[2-9][0-9]{11}',
-        title: 'Exactly 12 digits; first digit 2–9',
-        inputMode: 'numeric' as const,
-      };
-    case 'PAN Card':
-      return {
-        minLength: 10,
-        maxLength: 10,
-        pattern: '[A-Z]{5}[0-9]{4}[A-Z]',
-        title: '5 letters, 4 digits, 1 letter',
-        inputMode: 'text' as const,
-      };
-    case 'Passport':
-      return {
-        minLength: 8,
-        maxLength: 8,
-        pattern: '[A-Z][0-9]{7}',
-        title: '1 letter followed by 7 digits',
-        inputMode: 'text' as const,
-      };
-    case 'Voter ID':
-      return {
-        minLength: 10,
-        maxLength: 10,
-        pattern: '[A-Z]{3}[0-9]{7}',
-        title: '3 letters followed by 7 digits',
-        inputMode: 'text' as const,
-      };
-    case 'Driving License':
-      return {
-        minLength: 15,
-        maxLength: 16,
-        pattern: '[A-Z]{2}[0-9]{13,14}',
-        title: '2-letter state code followed by 13–14 digits; no separators',
-        inputMode: 'text' as const,
-      };
-    default:
-      return {
-        minLength: 1,
-        maxLength: 32,
-        pattern: '[A-Za-z0-9/\\-]{1,32}',
-        title: '1–32 letters, digits, hyphens or slashes',
-        inputMode: 'text' as const,
-      };
+export function cleanMobileNumber(val?: string | null): string {
+  if (!val) return '';
+  let cleaned = String(val).replace(/[\s\-\(\)\.]/g, '');
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length === 12) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length === 11) {
+    cleaned = cleaned.slice(1);
   }
+  return cleaned;
 }
 
-export function formatGovtIdInput(value: string, idType: string) {
-  if (idType === 'Aadhaar') {
-    return digitsOnly(value, 12);
-  }
-  const clean = value.toUpperCase().replace(idType === 'Institute ID' ? /[^A-Z0-9/\-]/g : /[^A-Z0-9]/g, '');
-  return clean.slice(0, getGovtIdInputConstraints(idType).maxLength);
+export function cleanAadhaarNumber(val?: string | null): string {
+  if (!val) return '';
+  return String(val).trim().replace(/^=['"]|['"]$/g, '').replace(/[\s\-]/g, '');
 }
+
+export function repeatedAadhaarNumbers(values: Iterable<string>): Set<string> {
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const value of values) {
+    const number = cleanAadhaarNumber(value);
+    if (!number) continue;
+    if (seen.has(number)) repeated.add(number);
+    seen.add(number);
+  }
+  return repeated;
+}
+
+export const DUPLICATE_ROSTER_AADHAAR = 'This Aadhaar appears on multiple selected rows. Enter the correct Aadhaar for each officer.';
 
 export function validateMobile(value?: string | null): void {
   if (!value || !/^[6-9][0-9]{9}$/.test(value)) {
@@ -96,6 +62,10 @@ export function validateGovernmentId(type: string, value?: string | null): void 
       pattern: /^[A-Za-z0-9/-]{1,32}$/,
       message: 'Institute ID must contain 1–32 letters, digits, hyphens or slashes.',
     },
+    'Police ID': {
+      pattern: /^[A-Za-z0-9/-]{1,32}$/,
+      message: 'Police ID must contain 1–32 letters, digits, hyphens or slashes.',
+    },
   };
 
   const rule = patterns[type];
@@ -105,4 +75,42 @@ export function validateGovernmentId(type: string, value?: string | null): void 
   if (!value || !rule.pattern.test(value)) {
     throw new Error(rule.message);
   }
+}
+
+export function isValidPhotoUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (
+    !trimmed ||
+    trimmed === 'DESK_CAPTURE' ||
+    trimmed === 'ATTACHED' ||
+    trimmed === '—' ||
+    trimmed === 'None' ||
+    trimmed === 'null' ||
+    trimmed === 'undefined'
+  ) {
+    return false;
+  }
+  return (
+    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('blob:')
+  );
+}
+
+export function formatPhotoUrl(url?: string | null): string {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+
+  const gDriveMatch = trimmed.match(
+    /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)|docs\.google\.com\/file\/d\/)([a-zA-Z0-9_-]+)/
+  );
+  if (gDriveMatch && gDriveMatch[1]) {
+    return `https://drive.google.com/thumbnail?id=${gDriveMatch[1]}&sz=w600`;
+  }
+
+  return trimmed;
 }

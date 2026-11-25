@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { HeaderLogo } from '../common/HeaderLogo';
 import { PassEntity } from '@/core/domain/entities/pass.entity';
+import { getPassValidFrom, PASS_VALID_TO } from '@/core/domain/pass-validity';
+import { isValidPhotoUrl, formatPhotoUrl } from '@/lib/identity-validation';
+import { getDefaultGate } from '@/core/domain/zones';
 
 interface PrintableDutyCardProps {
   pass: Partial<PassEntity>;
@@ -11,6 +14,7 @@ interface PrintableDutyCardProps {
   scale?: number;
   className?: string;
   hideShadow?: boolean;
+  printDate?: string;
 }
 
 export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
@@ -18,8 +22,16 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
   scale = 1,
   className = '',
   hideShadow = false,
+  printDate,
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [pass.photo_url]);
+
+  const formattedPhoto = pass.photo_url ? formatPhotoUrl(pass.photo_url) : '';
 
   const passNumber = pass.pass_number || 'DGPCONF-2026-0142';
   const fullName = pass.full_name || 'Cardholder Name';
@@ -43,8 +55,7 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
     : 'INSTITUTION / UNIT NOT SELECTED';
 
   // Format Dates
-  const formatDate = (d?: string) => {
-    if (!d) return '27/11/2026';
+  const formatDate = (d: string) => {
     if (d.includes('/')) return d;
     const parts = d.split('-');
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
@@ -80,7 +91,7 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
     >
       {/* 1. TOP HEADER BAND */}
       <div className="bg-[#0B2545] text-white border-b border-[#0B2545] flex flex-col shrink-0">
-        {/* Prominent DUTY [PUNCH HOLE] PASS Strip */}
+        {/* Prominent DUTY [PUNCH HOLE] ID CARD Strip */}
         <div className="w-full pt-1 pb-0.5 px-2 border-b border-white/15 bg-black/15 flex items-center justify-center gap-2.5 relative">
           <span className="text-[14.5px] font-black tracking-[0.22em] uppercase leading-none text-white select-none">
             DUTY
@@ -99,7 +110,7 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
           </div>
 
           <span className="text-[14.5px] font-black tracking-[0.22em] uppercase leading-none text-white select-none">
-            PASS
+            ID CARD
           </span>
         </div>
 
@@ -145,13 +156,13 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-slate-600">Valid From:</span>
             <span className="font-mono font-extrabold text-[#0B2545] text-[7.8px]">
-              {formatDate(pass.valid_from)}
+              {formatDate(printDate || getPassValidFrom(pass) || 'On print')}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-slate-600">Valid To:</span>
             <span className="font-mono font-extrabold text-[#8B1A1A] text-[7.8px]">
-              {formatDate(pass.valid_to)}
+              {formatDate(PASS_VALID_TO)}
             </span>
           </div>
         </div>
@@ -162,11 +173,12 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
         {/* Photo Column */}
         <div className="col-span-4 p-1.5 border-r border-[#0B2545] flex flex-col items-center justify-center bg-slate-50/70">
           <div className="relative w-[70px] h-[86px] rounded border border-slate-200 overflow-hidden flex items-center justify-center bg-slate-100 shadow-2xs">
-            {pass.photo_url ? (
+            {isValidPhotoUrl(formattedPhoto) && !imageError ? (
               <img
-                src={pass.photo_url}
+                src={formattedPhoto}
                 alt="Passport Photo"
                 className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
               />
             ) : (
               <div className="p-1 text-center text-[6.5px] font-bold text-slate-400 leading-tight">
@@ -238,31 +250,25 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
               {pass.zone_a && (
                 <div className="text-[#0B2545] text-[7.2px] font-extrabold leading-tight">
                   <div>Zone-A (Residential / Hostel)</div>
-                  {pass.gate_zone_a && (
-                    <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
-                      {pass.gate_zone_a}
-                    </span>
-                  )}
+                  <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
+                    {pass.gate_zone_a || getDefaultGate(pass.institution, 'A')}
+                  </span>
                 </div>
               )}
               {pass.zone_b && (
                 <div className="text-[#0B2545] text-[7.2px] font-extrabold leading-tight">
                   <div>Zone-B (Academic / Admin)</div>
-                  {pass.gate_zone_b && (
-                    <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
-                      {pass.gate_zone_b}
-                    </span>
-                  )}
+                  <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
+                    {pass.gate_zone_b || getDefaultGate(pass.institution, 'B')}
+                  </span>
                 </div>
               )}
               {pass.zone_c && (
                 <div className="text-[#0B2545] text-[7.2px] font-extrabold leading-tight">
                   <div>Zone-C (Service / Utility)</div>
-                  {pass.gate_zone_c && (
-                    <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
-                      {pass.gate_zone_c}
-                    </span>
-                  )}
+                  <span className="block text-[6px] font-bold text-[#8B1A1A] leading-tight">
+                    {pass.gate_zone_c || getDefaultGate(pass.institution, 'C')}
+                  </span>
                 </div>
               )}
               {!pass.zone_a && !pass.zone_b && !pass.zone_c && (
@@ -319,24 +325,23 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
 
         {/* Issuing Authority Signature & Official Seal */}
         <div className="px-2.5 py-1 flex flex-col justify-between items-center text-center h-[54px] relative overflow-hidden">
-          <div className="w-full h-[28px] flex items-center justify-center relative overflow-hidden">
+          <div className="w-full min-h-0 flex-1 flex items-center justify-center overflow-hidden">
             {pass.authority_signature_url ? (
               <img
                 src={pass.authority_signature_url}
                 alt="Authority Signature"
-                className="max-h-[28px] max-w-[110px] object-contain mix-blend-multiply z-10"
+                className="max-h-full max-w-[110px] object-contain mix-blend-multiply"
               />
-            ) : (
-              <span className="text-[7px] font-mono text-slate-700 font-bold z-10">R. Rao / SP</span>
-            )}
+            ) : null}
           </div>
-          <div className="w-full">
+          <div className="w-full shrink-0">
             <div className="border-t border-[#0B2545] w-11/12 mx-auto pt-[2px] text-[6.8px] font-bold text-[#0B2545] uppercase leading-none">
               Issuing Authority (With Seal)
             </div>
-            <div className="text-[5.4px] font-semibold text-slate-600 leading-tight mt-[1px]">
-              SP / Security Nodal Officer, Tirupati
-            </div>
+            {pass.authority_name && <div className="truncate text-[6.2px] font-bold text-[#0B2545] leading-tight">{pass.authority_name}</div>}
+            {pass.authority_title && pass.authority_title !== pass.authority_name && (
+              <div className="truncate text-[5.4px] font-semibold text-slate-600 leading-tight">{pass.authority_title}</div>
+            )}
           </div>
         </div>
       </div>

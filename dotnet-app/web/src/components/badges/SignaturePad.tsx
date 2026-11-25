@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
-import { PillButton } from '../common/PillButton';
 import { RotateCcw, PenTool } from 'lucide-react';
 
 interface SignaturePadProps {

@@ -3,6 +3,7 @@ import { services } from '@/core/services/service-container';
 import { SessionUser, UserRole } from '@/core/domain/entities/user.entity';
 import { managesAccounts } from '@/core/domain/offices';
 import { tokenHash } from './password';
+import { SESSION_IDLE_MINUTES } from '@/core/domain/session-lifetime';
 
 export const SESSION_COOKIE_NAME = 'dgp_session';
 
@@ -92,7 +93,7 @@ export async function authorizeRequest(
 }
 
 export function createSessionCookie(token: string, isHttps: boolean = false): string {
-  const maxAge = 8 * 60 * 60; // 8 hours
+  const maxAge = SESSION_IDLE_MINUTES * 60;
   const secureFlag = isHttps ? '; Secure' : '';
   return `${SESSION_COOKIE_NAME}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Strict${secureFlag}`;
 }

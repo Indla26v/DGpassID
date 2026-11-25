@@ -3,7 +3,7 @@
 import { useDialog } from '../common/useDialog';
 import React, { useState } from 'react';
 import { PillButton } from '../common/PillButton';
-import { X, Building2, Plus, Check } from 'lucide-react';
+import { X, Building2, Plus } from 'lucide-react';
 
 interface AddDepartmentModalProps {
   isOpen: boolean;

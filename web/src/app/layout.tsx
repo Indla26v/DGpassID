@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
+import '@/lib/client-safe-json';
+import { ClientSafeJsonProvider } from '@/components/common/ClientSafeJsonProvider';
 
 export const metadata: Metadata = {
   title: '61st All India DGsP / IGPs Conference 2026 – Pass Management',
@@ -24,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-100 text-slate-900 antialiased font-sans">
+        <ClientSafeJsonProvider />
         <a className="skip-link no-print" href="#workspace">
           Skip to workspace
         </a>

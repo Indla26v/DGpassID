@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { services } from '@/core/services/service-container';
 import { authorizeRequest } from '@/lib/auth/session-helper';
-
-function getTodayIST(): string {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const ist = new Date(utc + 5.5 * 3600000);
-  return ist.toISOString().split('T')[0];
-}
+import { getPassValidFrom, PASS_VALID_TO, toConferenceDate } from '@/core/domain/pass-validity';
 
 export async function POST(req: Request) {
   const auth = await authorizeRequest(req, ['ADMIN']);
@@ -40,12 +34,11 @@ export async function POST(req: Request) {
     let isValid = ['APPROVED', 'READY_TO_PRINT', 'PRINTED', 'ISSUED'].includes(pass.status);
     let statusText: string = pass.status;
 
-    const today = getTodayIST();
-    if (pass.valid_from && pass.valid_to) {
-      if (today < pass.valid_from || today > pass.valid_to) {
-        isValid = false;
-        statusText = 'OUTSIDE_VALIDITY';
-      }
+    const today = toConferenceDate(new Date());
+    const validFrom = getPassValidFrom(pass);
+    if (isValid && (!validFrom || today < validFrom || today > PASS_VALID_TO)) {
+      isValid = false;
+      statusText = 'OUTSIDE_VALIDITY';
     }
 
     const gate = (body.gateId || '').toString().toUpperCase().trim();

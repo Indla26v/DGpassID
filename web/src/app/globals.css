@@ -14,20 +14,43 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-}
 
-/* Holographic Anti-Counterfeit Sticker Simulation */
-.holo-foil {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 0, 128, 0.45) 0%,
-    rgba(0, 229, 255, 0.55) 25%,
-    rgba(255, 238, 0, 0.5) 50%,
-    rgba(124, 77, 255, 0.55) 75%,
-    rgba(0, 255, 163, 0.45) 100%
-  );
-  backdrop-filter: blur(1px);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25), inset 0 0 6px rgba(255, 255, 255, 0.85);
+  /* Rounded checkboxes across the app: crimson fill with a white tick when checked. */
+  input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    border: 2px solid #94a3b8;
+    border-radius: 0.4rem;
+    background-color: #fff;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  }
+  input[type="checkbox"]:hover:not(:disabled) {
+    border-color: #8B1A1A;
+  }
+  input[type="checkbox"]:checked {
+    border-color: #8B1A1A;
+    background-color: #8B1A1A;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+    background-size: 80%;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(139, 26, 26, 0.25);
+  }
+  input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
 }
 
 /* Exact Physical Card Dimensions: 8cm (80mm) Width x 12cm (120mm) Height */
@@ -41,7 +64,7 @@
   box-sizing: border-box;
 }
 
-/* Exact Print Isolation for Duty Access Cards (Exact Page-Center Alignment) */
+/* Print isolation for duty access cards */
 @page {
   size: portrait;
   margin: 0 !important;
@@ -86,39 +109,42 @@
     display: none !important;
   }
 
-  /* Single-card print container isolation (centered in the page) */
-  #single-card-print-portal {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: static !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    margin: auto !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    overflow: hidden !important;
-    page-break-after: avoid !important;
-    break-after: avoid !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    page-break-before: avoid !important;
-    break-before: avoid !important;
+  html:has(body > .print-only-container),
+  body:has(> .print-only-container),
+  html:has(.bulk-print-active),
+  body:has(.bulk-print-active) {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(> .print-only-container) > :not(.print-only-container) {
+    display: none !important;
   }
 
   .print-only-container {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    height: 100% !important;
-    min-height: 100% !important;
-    margin: auto !important;
-    padding: 0 !important;
-    background: #ffffff !important;
+    display: block !important;
+    width: 100%;
+  }
+
+  .bulk-print-document:has(.bulk-print-active) {
+    min-height: 0;
+    padding: 0;
+    background: white;
+  }
+
+  .bulk-print-page-list {
+    display: block;
+  }
+
+  .bulk-print-page {
+    padding-top: 3mm;
+    break-inside: avoid;
+  }
+
+  .bulk-print-page + .bulk-print-page {
+    break-before: page;
   }
 
   .printable-card-size {
@@ -145,6 +171,28 @@
   .workspace-width {
     @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-10;
   }
+  .operations-panel {
+    @apply min-w-0 rounded-3xl border border-slate-200/80 bg-white shadow-[0_6px_24px_-16px_rgba(11,37,69,0.35)];
+  }
+  .operations-metric {
+    @apply flex min-w-0 items-start justify-between gap-1.5 rounded-2xl border border-slate-200/80 bg-white px-3 py-3 shadow-[0_4px_14px_-10px_rgba(11,37,69,0.4)] sm:rounded-3xl sm:py-3.5 lg:gap-2 lg:px-4;
+  }
+  .operations-banner {
+    @apply rounded-3xl border border-police-navyLight/60 px-4 py-4 text-white shadow-sm sm:px-5;
+    background: radial-gradient(ellipse at 100% 0%, #24466d 0%, transparent 58%), linear-gradient(115deg, #0b2545, #112e50);
+  }
+  .operations-banner .operations-heading {
+    @apply text-white;
+  }
+  .operations-heading {
+    @apply text-2xl font-semibold leading-tight tracking-tight sm:text-3xl;
+  }
+  .operations-input {
+    @apply min-h-10 w-full min-w-0 rounded-full border border-slate-200 bg-slate-50/80 text-sm text-slate-900 placeholder:text-slate-500 hover:border-slate-300 focus:border-police-crimson focus:bg-white focus:outline-none focus:ring-2 focus:ring-police-crimson/20;
+  }
+  .operations-action {
+    @apply rounded-full transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out motion-safe:enabled:active:scale-[0.97];
+  }
   .skip-link {
     @apply fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-[#0B2545] shadow-lg focus:translate-y-0;
   }
@@ -162,13 +210,31 @@
   .workspace-table td > span:only-child {
     white-space: nowrap;
   }
-  .filter-controls select {
-    flex: 1 1 auto;
-  }
 }
 
 @media screen {
   html { scrollbar-gutter: stable; }
+
+  /* Modern sleek scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.65);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+  }
+
   button, input, select, textarea, a {
     -webkit-tap-highlight-color: transparent;
   }
@@ -182,9 +248,23 @@
   input, select, textarea {
     transition: box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
   }
-  /* A transform here would make fixed dialogs relative to the entire portal. */
-  .portal-enter { animation: workspace-fade 260ms ease-out; }
   .animate-fadeIn { animation: workspace-enter 180ms ease-out both; }
+  @media (prefers-reduced-motion: no-preference) {
+    .operations-enter {
+      animation: operations-enter 300ms cubic-bezier(.2,.75,.25,1) backwards;
+    }
+    .operations-metric {
+      animation: operations-enter 340ms cubic-bezier(.2,.75,.25,1) backwards;
+    }
+    .operations-metric:nth-child(2) { animation-delay: 30ms; }
+    .operations-metric:nth-child(3) { animation-delay: 60ms; }
+    .operations-metric:nth-child(4) { animation-delay: 90ms; }
+    .operations-metric:nth-child(5) { animation-delay: 120ms; }
+  }
+  @keyframes operations-enter {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   @keyframes workspace-fade {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -196,7 +276,6 @@
 }
 
 @media (max-width: 639px) {
-  .filter-controls select { flex: 1 1 100%; width: 100%; }
   .queue-tabs button { flex: 1 1 calc(50% - 0.5rem); justify-content: center; }
 }
 
