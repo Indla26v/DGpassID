@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { MapPinned, Search, UserCheck, UserMinus } from 'lucide-react';
+import { MapPinned, Search, Undo2, UserCheck, UserMinus } from 'lucide-react';
 import { DutyPointsMapDialog } from './DutyPointsMapDialog';
 import { useAuth } from '@/auth/AuthProvider';
 import { OperationsHeader } from '../common/OperationsHeader';
 import { PillButton } from '../common/PillButton';
 import { CustomSelect } from '../common/CustomSelect';
 import { dutyPointsFor, POLICE_BANDOBUSHT_ZONES, type PoliceSectorItem } from '@/core/domain/police-zones';
-import { displayRank, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
+import { displayRank, FORCE_CATEGORIES, FORCE_LABELS, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
 
 /** Tree node the officer list is filtered to: a whole sector, a sub-sector, or one point. */
@@ -35,13 +35,18 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
   const [node, setNode] = useState<Node | null>(null);
   const [placement, setPlacement] = useState<'unplaced' | 'all'>('unplaced');
   const [rankFilter, setRankFilter] = useState('');
+  const [forceFilter, setForceFilter] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [target, setTarget] = useState<{ sector: string; subSector: string; point: string }>({ sector: '', subSector: '', point: '' });
   const [saving, setSaving] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [confirmSendBack, setConfirmSendBack] = useState(false);
 
   const activeSector = sectorFilter || (sectors.length === 1 ? sectors[0].number : '');
+  // Sub-sectors of the chosen sector (the Sub-sector filter appears only when there are some).
+  const activeSubSectors = sectors.find(item => item.number === activeSector)?.subSectors ?? [];
+  const selectedSubSector = node?.sector === activeSector && node.subSector && activeSubSectors.includes(node.subSector) ? node.subSector : '';
 
   const load = useCallback(async () => {
     if (!zoneName) return;
@@ -92,11 +97,12 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
       }
       if (placement === 'unplaced' && !node?.point && officer.police_point_code) return false;
       if (rankFilter && rankGroupOf(officer.rank) !== rankFilter) return false;
+      if (forceFilter && officer.force_category !== forceFilter) return false;
       return !text || [officer.full_name, officer.police_id_number, officer.mobile_number, officer.district, officer.police_point_name]
         .some(value => (value ?? '').toLowerCase().includes(text));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [officers, node, placement, rankFilter, query, zone]);
+  }, [officers, node, placement, rankFilter, forceFilter, query, zone]);
 
   const targetSector = sectorByNumber(target.sector || activeSector || node?.sector);
   const targetSubSectors = targetSector?.subSectors ?? [];
@@ -137,6 +143,34 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
     }
   };
 
+  // Send ticked officers back to Officer Selection (clears zone, sector, sub-sector and point).
+  const sendBack = async () => {
+    const passIds = [...selected];
+    if (!passIds.length) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/deployment/unallot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passIds }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not send the officers back.');
+      setNotice(`${data.returned} officer${data.returned === 1 ? '' : 's'} sent back to Officer Selection.`
+        + (data.printed ? ` ${data.printed} already had a printed ID card — reprint it after the new allotment.` : '')
+        + (data.rejected ? ` ${data.rejected} could not be changed (outside your area).` : ''));
+      setSelected(new Set());
+      setConfirmSendBack(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send the officers back.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!zones.length) {
     return (
       <div className="operations-panel p-6 text-sm text-slate-600">
@@ -153,7 +187,7 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
         ? 'Place allotted officers on sub-sectors and duty points across all zones.'
         : 'Place the officers allotted to your zone or sector on sub-sectors and duty points.'} />}
 
-      <div className="operations-panel grid gap-2 p-3 sm:grid-cols-2 sm:p-4">
+      <div className={`operations-panel grid gap-2 p-3 sm:grid-cols-2 sm:p-4 ${activeSubSectors.length ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)]'}`}>
         <div className="min-w-0 space-y-1">
           <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Zone</span>
           <CustomSelect ariaLabel="Zone" wrapValue value={zoneName} onChange={value => { setZoneName(value); setSectorFilter(''); }}
@@ -164,6 +198,19 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
           <CustomSelect ariaLabel="Sector" wrapValue searchable value={activeSector} onChange={setSectorFilter}
             options={[...(sectors.length > 1 ? [{ value: '', label: 'All my sectors' }] : []),
               ...sectors.map(item => ({ value: item.number, label: `${item.number}: ${item.name}` }))]} />
+        </div>
+        {activeSubSectors.length > 0 && (
+          <div className="min-w-0 space-y-1">
+            <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Sub-sector</span>
+            <CustomSelect ariaLabel="Sub-sector" wrapValue searchable value={selectedSubSector}
+              onChange={value => (value ? chooseNode({ sector: activeSector, subSector: value }) : setNode(null))}
+              options={[{ value: '', label: 'All sub-sectors' }, ...activeSubSectors.map(item => ({ value: item, label: item }))]} />
+          </div>
+        )}
+        <div className="min-w-0 space-y-1">
+          <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Force</span>
+          <CustomSelect ariaLabel="Force" value={forceFilter} onChange={setForceFilter}
+            options={[{ value: '', label: 'All forces' }, ...FORCE_CATEGORIES.map(item => ({ value: item, label: FORCE_LABELS[item] }))]} />
         </div>
       </div>
 
@@ -292,14 +339,43 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
                 options={[{ value: '', label: targetPoints.length ? 'No point (sector / sub-sector only)' : 'No points listed here' },
                   ...targetPoints.map(item => ({ value: item.code, label: item.name }))]} />
             </div>
-            <div className="sm:col-span-2">
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
               <PillButton type="button" variant="crimson" disabled={saving || !selected.size || !targetSector}
                 icon={<UserCheck aria-hidden="true" className="size-3.5" />}
                 onClick={() => save([...selected], { sector: targetSector?.number ?? '', subSector: target.subSector, point: target.point })}>
                 {saving ? 'Saving…' : `Post ${selected.size} selected officer${selected.size === 1 ? '' : 's'}`}
               </PillButton>
+              <PillButton type="button" variant="outline" disabled={saving || !selected.size}
+                className="border-rose-300 text-rose-700 hover:bg-rose-50"
+                icon={<Undo2 aria-hidden="true" className="size-3.5" />}
+                title="Remove the zone, sector, sub-sector and point so they can be selected again"
+                onClick={() => setConfirmSendBack(true)}>
+                Send {selected.size || ''} back to Officer Selection
+              </PillButton>
             </div>
           </div>
+
+          {confirmSendBack && selected.size > 0 && (() => {
+            const ticked = officers.filter(officer => selected.has(officer.id));
+            const printed = ticked.filter(officer => officer.printed_count > 0 || officer.status === 'PRINTED' || officer.status === 'ISSUED').length;
+            return (
+              <div role="alertdialog" aria-label="Confirm send back" className="space-y-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-900">
+                <p>
+                  Send <span className="font-semibold">{ticked.length} officer{ticked.length === 1 ? '' : 's'}</span> back to Officer Selection?
+                  Their zone, sector, sub-sector and duty point will be removed, and they will show as <span className="font-semibold">Not allotted</span>.
+                </p>
+                {printed > 0 && (
+                  <p className="font-semibold">{printed} of them already have a printed ID card showing this posting. Reprint it after the new allotment.</p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <PillButton type="button" variant="danger" size="sm" disabled={saving} onClick={() => void sendBack()}>
+                    {saving ? 'Sending back…' : 'Yes, send back'}
+                  </PillButton>
+                  <PillButton type="button" variant="outline" size="sm" disabled={saving} onClick={() => setConfirmSendBack(false)}>Cancel</PillButton>
+                </div>
+              </div>
+            );
+          })()}
         </section>
       </div>
       <button type="button" onClick={() => setMapOpen(true)} aria-haspopup="dialog"

@@ -7,7 +7,7 @@ import { CustomSelect } from '../common/CustomSelect';
 import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
 import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { AP_DISTRICTS, POLICE_SPECIAL_UNITS } from '@/core/domain/districts';
-import { ASI_HC_GROUP, displayRank, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
+import { ASI_HC_GROUP, displayRank, FORCE_CATEGORIES, FORCE_LABELS, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
 import { ageBand, asiHcTargets, compositionOf } from '@/modules/deployment/selection';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
 import { AllotDialog } from './AllotDialog';
@@ -27,6 +27,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
   // '' = All ranks (default on opening).
   const [rankGroup, setRankGroup] = useState('');
   const [districts, setDistricts] = useState<string[]>([]);
+  const [force, setForce] = useState('');
   const [includeAllotted, setIncludeAllotted] = useState(false);
   const [count, setCount] = useState('200');
   const [ageCutoff, setAgeCutoff] = useState<number | null>(null);
@@ -43,7 +44,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
 
   // Allotment popup: which officers, and the last zone/sector used (pre-filled next time).
   const [allotIds, setAllotIds] = useState<string[] | null>(null);
-  const [lastTarget, setLastTarget] = useState({ zoneName: '', sectorNumber: '' });
+  const [lastTarget, setLastTarget] = useState({ zoneName: '', sectorNumber: '', subSector: '' });
   const [allotError, setAllotError] = useState('');
   const [busy, setBusy] = useState<'select' | 'allot' | null>(null);
   const [error, setError] = useState('');
@@ -72,7 +73,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
         const response = await fetch('/api/deployment/selection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rankGroup, districts, includeAllotted, poolOnly: true }),
+          body: JSON.stringify({ rankGroup, districts, force, includeAllotted, poolOnly: true }),
           signal: controller.signal,
         });
         const data = await response.json();
@@ -89,7 +90,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
       }
     }, 250);
     return () => { controller.abort(); window.clearTimeout(timer); };
-  }, [rankGroup, districts, includeAllotted, reloadKey]);
+  }, [rankGroup, districts, force, includeAllotted, reloadKey]);
 
   // A new rank or district set starts a fresh selection.
   useEffect(() => {
@@ -97,7 +98,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
     setSelected(new Set());
     setShowOnly('all');
     setPage(0);
-  }, [rankGroup, districts]);
+  }, [rankGroup, districts, force]);
 
   const requested = Number(count);
   const isAsiHc = rankGroup === ASI_HC_GROUP;
@@ -146,7 +147,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
       const response = await fetch('/api/deployment/selection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rankGroup, districts, count: requested, includeAllotted }),
+        body: JSON.stringify({ rankGroup, districts, force, count: requested, includeAllotted }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not select officers.');
@@ -162,7 +163,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
     }
   };
 
-  const allot = useCallback(async (passIds: string[], zoneName: string, sectorNumber: string) => {
+  const allot = useCallback(async (passIds: string[], zoneName: string, sectorNumber: string, subSector = '') => {
     const toZone = POLICE_BANDOBUSHT_ZONES.find(item => item.name === zoneName);
     const toSector = toZone?.sectors.find(item => item.number === sectorNumber);
     if (!toZone || !toSector || !passIds.length) return;
@@ -174,7 +175,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          passIds, zone: toZone.name, sectorNumber: toSector.number, rankGroup, districts,
+          passIds, zone: toZone.name, sectorNumber: toSector.number, subSector: subSector || null, rankGroup, districts,
           requestedCount: passIds.length > 1 && autoSelection ? autoSelection.requested : passIds.length,
           composition: passIds.length > 1 ? composition : {},
         }),
@@ -182,8 +183,8 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not allot the officers.');
       const name = passIds.length === 1 ? pool.find(officer => officer.id === passIds[0])?.full_name : '';
-      setNotice(`${name || `${data.allotted} officers`} allotted to Zone ${toZone.number} · ${toSector.number}: ${toSector.name}.`);
-      setLastTarget({ zoneName, sectorNumber });
+      setNotice(`${name || `${data.allotted} officers`} allotted to Zone ${toZone.number} · ${toSector.number}: ${toSector.name}${subSector ? ` · ${subSector}` : ''}.`);
+      setLastTarget({ zoneName, sectorNumber, subSector });
       setAllotIds(null);
       setTicked(passIds, false);
       if (passIds.length > 1) setAutoSelection(null);
@@ -194,7 +195,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
     } finally {
       setBusy(null);
     }
-  }, [rankGroup, districts, autoSelection, composition, pool, onAllotted]);
+  }, [rankGroup, districts, force, autoSelection, composition, pool, onAllotted]);
 
   // Rank shown in the allot popup: the chosen rank, or the officers' common rank when 'All ranks' is selected.
   const allotRankGroup = (officers: PoolOfficer[]) => {
@@ -216,17 +217,23 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
           <span className="font-semibold text-police-navy">
             {poolLoading ? 'Loading…' : `${pool.length.toLocaleString()} ${rankGroup ? `${rankGroup} ` : ''}officer${pool.length === 1 ? '' : 's'}`}
           </span>
+          {force ? ` · ${FORCE_LABELS[force as keyof typeof FORCE_LABELS]}` : ''}
           {' '}{districts.length ? `in ${districts.length <= 2 ? districts.join(', ') : `${districts.length} districts`}` : 'in all districts'}
           {includeAllotted ? '' : ', not yet allotted'}
         </p>
       </div>
 
       {/* Filters */}
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,2fr)]">
         <div className="min-w-0 space-y-1">
           <span aria-hidden="true" className={fieldLabel}>Rank</span>
           <CustomSelect ariaLabel="Rank" value={rankGroup} searchable onChange={setRankGroup}
             options={[{ value: '', label: 'All ranks' }, ...RANK_GROUPS.map(item => ({ value: item.group, label: item.component === 'AR' ? `${item.group} (AR component)` : item.group }))]} />
+        </div>
+        <div className="min-w-0 space-y-1">
+          <span aria-hidden="true" className={fieldLabel}>Force</span>
+          <CustomSelect ariaLabel="Force" value={force} onChange={setForce}
+            options={[{ value: '', label: 'All forces' }, ...FORCE_CATEGORIES.map(item => ({ value: item, label: FORCE_LABELS[item] }))]} />
         </div>
         <div className="min-w-0 space-y-1">
           <span aria-hidden="true" className={fieldLabel}>Districts / units</span>
@@ -351,7 +358,10 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
                   </td>
                   <th scope="row" className="px-2 py-1 font-normal">
                     <span className="block font-semibold text-slate-900">{officer.full_name}</span>
-                    <span className="text-slate-500">{[officer.police_id_number, officer.mobile_number].filter(Boolean).join(' · ')}</span>
+                    <span className="text-slate-500">{[officer.police_id_number, officer.mobile_number, officer.police_station].filter(Boolean).join(' · ')}</span>
+                    {officer.force_category && officer.force_category !== 'CIVIL' && (
+                      <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-px text-[10px] font-semibold text-slate-600">{FORCE_LABELS[officer.force_category as keyof typeof FORCE_LABELS] ?? officer.force_category}</span>
+                    )}
                   </th>
                   <td className="whitespace-nowrap px-2 py-1">
                     <span className="font-semibold text-police-crimson">{displayRank(officer.rank)}</span>
@@ -401,9 +411,10 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
           rankGroup={allotRankGroup(pool.filter(officer => allotIds.includes(officer.id)))}
           initialZone={lastTarget.zoneName}
           initialSector={lastTarget.sectorNumber}
+          initialSubSector={lastTarget.subSector}
           busy={busy === 'allot'}
           error={allotError}
-          onConfirm={(zoneName, sectorNumber) => allot(allotIds, zoneName, sectorNumber)}
+          onConfirm={(zoneName, sectorNumber, subSector) => allot(allotIds, zoneName, sectorNumber, subSector)}
           onClose={() => setAllotIds(null)}
         />
       )}

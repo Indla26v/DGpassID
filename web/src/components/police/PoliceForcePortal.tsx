@@ -22,6 +22,8 @@ import { OfficerSelectionPanel } from '../deployment/OfficerSelectionPanel';
 import { PointAssignmentPortal } from '../deployment/PointAssignmentPortal';
 import { PrintTeamPortal } from '../print/PrintTeamPortal';
 import { PoliceExportPanel } from './PoliceExportPanel';
+import { PoliceDashboard } from './PoliceDashboard';
+import { InstructionsManager } from '../deployment/InstructionsManager';
 import { SectionSidebar, type SidebarSection } from '../common/SectionSidebar';
 import {
   ShieldCheck,
@@ -36,6 +38,8 @@ import {
   Shuffle,
   MapPinned,
   FileDown,
+  LayoutDashboard,
+  ClipboardList,
 } from 'lucide-react';
 
 interface PoliceStats {
@@ -51,13 +55,15 @@ export const PoliceForcePortal: React.FC = () => {
   const { user } = useAuth();
   const isOperator = user.role === 'POLICE_PRINT';
   const isSp = user.role === 'ADMIN' && managesAccounts(user);
-  type PoliceSection = 'selection' | 'import' | 'points' | 'print' | 'export' | 'directory';
+  type PoliceSection = 'dashboard' | 'selection' | 'import' | 'points' | 'instructions' | 'print' | 'export' | 'directory';
   const [activeTab, setActiveTab] = useState<PoliceSection>('directory');
   // Inner menu: SP sees every section; print operators only the force directory.
   const sections: SidebarSection<PoliceSection>[] = [
+    ...(isSp ? [{ id: 'dashboard' as const, label: 'Dashboard', hint: 'Strength by zone, rank, district', Icon: LayoutDashboard }] : []),
     { id: 'directory', label: 'Bandobast Force', hint: 'Directory, print and issue', Icon: Users },
     ...(isSp ? [{ id: 'selection' as const, label: 'Officer Selection', hint: 'Pick and allot officers', Icon: Shuffle }] : []),
     ...(isSp ? [{ id: 'points' as const, label: 'Duty Points', hint: 'Sub-sectors and points', Icon: MapPinned }] : []),
+    ...(isSp ? [{ id: 'instructions' as const, label: 'Instructions', hint: 'Send duty instructions to zones', Icon: ClipboardList }] : []),
     ...(isSp ? [{ id: 'print' as const, label: 'Print Queue', hint: 'Police ID cards', Icon: Printer }] : []),
     ...(!isOperator ? [{ id: 'import' as const, label: 'Import', hint: 'Roster upload', Icon: Upload }] : []),
     ...(isSp ? [{ id: 'export' as const, label: 'Export', hint: 'Filtered roster download', Icon: FileDown }] : []),
@@ -263,7 +269,11 @@ export const PoliceForcePortal: React.FC = () => {
         />
       )}
 
+      {isSp && activeTab === 'dashboard' && <PoliceDashboard />}
+
       {isSp && activeTab === 'points' && <PointAssignmentPortal embedded />}
+
+      {isSp && activeTab === 'instructions' && <InstructionsManager />}
 
       {isSp && activeTab === 'print' && <PrintTeamPortal passType="POLICE_FORCE" embedded />}
 

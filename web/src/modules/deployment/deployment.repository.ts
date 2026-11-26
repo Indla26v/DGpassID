@@ -20,6 +20,9 @@ export interface DeploymentOfficer {
   mobile_number: string;
   date_of_birth: string | null;
   age_years: number | null;
+  force_category: string | null;
+  police_station: string | null;
+  gender: string | null;
   police_zone: string | null;
   police_sector_number: string | null;
   police_sector_name: string | null;
@@ -31,7 +34,7 @@ export interface DeploymentOfficer {
 }
 
 const officerFields = `id, pass_number, full_name, rank, police_id_number, ${policeDistrictSql} AS district, mobile_number,
-  date_of_birth, age_years, police_zone, police_sector_number, police_sector_name, police_point_code, police_point_name,
+  date_of_birth, age_years, force_category, police_station, gender, police_zone, police_sector_number, police_sector_name, police_point_code, police_point_name,
   distribution_status, status, printed_count`;
 
 export async function getAgeCutoffYears(): Promise<number> {
@@ -50,7 +53,7 @@ export async function setAgeCutoffYears(value: number): Promise<void> {
 }
 
 /** Officers of the given ranks and districts, eligible for SP selection. */
-export async function listSelectionPool(ranks: string[], districts: string[], includeAllotted: boolean): Promise<DeploymentOfficer[]> {
+export async function listSelectionPool(ranks: string[], districts: string[], includeAllotted: boolean, force?: string): Promise<DeploymentOfficer[]> {
   const params: unknown[] = [ranks.map(rank => rank.toUpperCase())];
   const where = [
     "pass_type = 'POLICE_FORCE'",
@@ -60,6 +63,10 @@ export async function listSelectionPool(ranks: string[], districts: string[], in
   if (districts.length) {
     params.push(districts.map(district => district.toLowerCase()));
     where.push(`LOWER(${policeDistrictSql}) = ANY($${params.length}::text[])`);
+  }
+  if (force) {
+    params.push(force);
+    where.push(`force_category = $${params.length}`);
   }
   if (!includeAllotted) where.push("NULLIF(BTRIM(police_zone), '') IS NULL");
   const res = await query<DeploymentOfficer>(
@@ -194,12 +201,17 @@ export async function assignDutyPoint(input: PointAssignmentInput, actor: Sessio
 
 export interface PoliceExportFilters {
   zone?: string;
+  /** Any of these zones (multi-select). */
+  zones?: string[];
+  /** Zone / sector officer scope: rows must fall in one of these (sector null = whole zone). */
+  scopePairs?: { zone: string; sector: string | null }[];
   sectorNumber?: string;
   /** Limit to these sectors (zone/sector officers without a whole-zone scope). */
   sectorNumbers?: string[];
   districts: string[];
   ranks: string[];
   duty?: 'ALLOTTED' | 'NOT_ALLOTTED' | 'ON_POINT';
+  force?: string;
 }
 
 export interface PoliceExportRow extends DeploymentOfficer {
@@ -213,10 +225,22 @@ export async function listOfficersForExport(filters: PoliceExportFilters, limit 
   const where = ["pass_type = 'POLICE_FORCE'", "status <> 'REVOKED'"];
   const add = (clause: string, value: unknown) => { params.push(value); where.push(clause.replaceAll('?', `$${params.length}`)); };
   if (filters.zone) add('police_zone = ?', filters.zone);
+  if (filters.zones?.length) add('police_zone = ANY(?::text[])', filters.zones);
+  if (filters.scopePairs?.length) {
+    const parts = filters.scopePairs.map(pair => {
+      params.push(pair.zone);
+      const zoneParam = `$${params.length}`;
+      if (pair.sector === null) return `police_zone = ${zoneParam}`;
+      params.push(pair.sector);
+      return `(police_zone = ${zoneParam} AND police_sector_number = $${params.length})`;
+    });
+    where.push(`(${parts.join(' OR ')})`);
+  }
   if (filters.sectorNumber) add('police_sector_number = ?', filters.sectorNumber);
   if (filters.sectorNumbers?.length) add('police_sector_number = ANY(?::text[])', filters.sectorNumbers);
   if (filters.districts.length) add(`LOWER(${policeDistrictSql}) = ANY(?::text[])`, filters.districts.map(item => item.toLowerCase()));
   if (filters.ranks.length) add('UPPER(rank) = ANY(?::text[])', filters.ranks.map(item => item.toUpperCase()));
+  if (filters.force) add('force_category = ?', filters.force);
   if (filters.duty === 'ALLOTTED') where.push("NULLIF(BTRIM(police_zone), '') IS NOT NULL");
   if (filters.duty === 'NOT_ALLOTTED') where.push("NULLIF(BTRIM(police_zone), '') IS NULL");
   if (filters.duty === 'ON_POINT') where.push("NULLIF(BTRIM(police_point_code), '') IS NOT NULL");
@@ -245,6 +269,53 @@ export async function sectorRankCounts(zone: string, sectorNumber: string): Prom
 }
 
 /** Zones and sectors the actor manages; null sector means the whole zone. */
+/**
+ * Sends officers back to Officer Selection: clears zone, sector, sub-sector and duty point.
+ * Zone / sector officers can only send back officers inside their own scope.
+ */
+export async function unallotOfficers(passIds: string[], actor: SessionUser): Promise<{ returned: number; printed: number; rejected: number }> {
+  return withTransaction(async client => {
+    await client.query('SELECT pg_advisory_xact_lock(6102028)');
+    const params: unknown[] = [passIds];
+    const scope = scopeCondition(actor, params);
+    const updated = await client.query<{ id: string; pass_number: string; office_id: string | null; was_printed: boolean; previous: string }>(
+      `WITH target AS (
+         SELECT id, police_zone, police_sector_number, police_sector_name, police_point_name,
+                (printed_count > 0 OR status IN ('PRINTED', 'ISSUED')) AS was_printed
+           FROM passes
+          WHERE id = ANY($1::uuid[]) AND pass_type = 'POLICE_FORCE'
+            AND NULLIF(BTRIM(police_zone), '') IS NOT NULL AND ${scope}
+          FOR UPDATE
+       )
+       UPDATE passes p
+          SET police_zone = NULL,
+              police_sector_number = NULL,
+              police_sector_name = NULL,
+              police_custom_sector = NULL,
+              police_point_code = NULL,
+              police_point_name = NULL,
+              deployment_batch_id = NULL,
+              distribution_status = CASE WHEN p.distribution_status = 'COLLECTED' OR p.collected_by_officer THEN p.distribution_status ELSE 'PENDING_ASSIGNMENT' END,
+              updated_at = NOW()
+         FROM target t
+        WHERE p.id = t.id
+        RETURNING p.id, p.pass_number, p.office_id, t.was_printed,
+                  CONCAT_WS(' - ', t.police_zone, t.police_sector_number, t.police_sector_name, t.police_point_name) AS previous`,
+      params,
+    );
+    if (updated.rowCount) {
+      await client.query(
+        `INSERT INTO audit_logs (pass_id, pass_number, action, performed_by, user_role, details, office_id)
+         SELECT u.id, u.pass_number, 'DUTY_UNALLOTTED', $2, $3, 'Sent back to Officer Selection (was: ' || u.previous || ').', u.office_id
+           FROM jsonb_to_recordset($1::jsonb) AS u(id uuid, pass_number text, office_id text, previous text)`,
+        [JSON.stringify(updated.rows), actor.email, actor.role],
+      );
+    }
+    const returned = updated.rowCount ?? 0;
+    return { returned, printed: updated.rows.filter(row => row.was_printed).length, rejected: passIds.length - returned };
+  });
+}
+
 export function deploymentScopeOf(actor: SessionUser): PolicePrintScope[] | 'ALL' {
   return actor.role === 'ADMIN' ? 'ALL' : actor.policePrintScope ?? [];
 }

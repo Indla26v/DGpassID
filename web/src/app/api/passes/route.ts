@@ -10,7 +10,7 @@ import { normalizeDistrict } from '@/core/domain/districts';
 import { getDefaultGate } from '@/core/domain/zones';
 import { InstitutionType } from '@/core/domain/types/pass-status.enum';
 import { parsePoliceDutyAssignment } from '@/core/domain/police-zones';
-import { normalizeRank } from '@/core/domain/ranks';
+import { normalizeForce, normalizeGender, normalizeRank } from '@/core/domain/ranks';
 import { parseAgeYears, parseDateOfBirth } from '@/lib/officer-age';
 
 const EDITABLE_FIELDS = [
@@ -46,6 +46,9 @@ const EDITABLE_FIELDS = [
   'police_point_name',
   'date_of_birth',
   'age_years',
+  'force_category',
+  'police_station',
+  'gender',
   'police_custom_sector',
   'security_component',
   'custom_security_component',
@@ -189,6 +192,17 @@ export async function POST(req: Request) {
           delete sanitized.age_years;
           if (dob) sanitized.date_of_birth = dob;
           if (age !== null) sanitized.age_years = age;
+          // Force, police station and gender are optional: blanks keep the stored value
+          // (new officers get force and gender derived from the rank).
+          delete sanitized.force_category;
+          delete sanitized.police_station;
+          delete sanitized.gender;
+          const force = String(record.force_category ?? '').trim();
+          if (force) sanitized.force_category = normalizeForce(force, sanitized.rank as string);
+          const station = String(record.police_station ?? '').trim().replace(/\s+/g, ' ').slice(0, 255);
+          if (station) sanitized.police_station = station;
+          const gender = String(record.gender ?? '').trim();
+          if (gender) sanitized.gender = normalizeGender(gender, sanitized.rank as string);
           sanitized.police_id_number = (record.police_id_number || record.id_number || record.gen_no || record.gl_no || '').toString().trim().toUpperCase();
           sanitized.police_unit_district = sanitized.institution_other;
           // Duty columns are optional. Rows without them keep the officer's existing allotment;

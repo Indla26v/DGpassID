@@ -34,6 +34,9 @@ export interface PassEntity {
   police_point_name?: string | null;
   date_of_birth?: string | null;
   age_years?: number | null;
+  force_category?: string | null;
+  police_station?: string | null;
+  gender?: string | null;
   deployment_batch_id?: string | null;
   police_custom_sector?: string | null;
   security_component?: string | null;
@@ -104,6 +107,9 @@ export interface CreatePassInput {
   police_point_name?: string;
   date_of_birth?: string;
   age_years?: number;
+  force_category?: string;
+  police_station?: string;
+  gender?: string;
   police_custom_sector?: string;
   security_component?: string;
   custom_security_component?: string;

@@ -6,7 +6,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { PillButton } from '../common/PillButton';
 import { CustomSelect } from '../common/CustomSelect';
 import { POLICE_BANDOBUSHT_ZONES, type PoliceSectorItem } from '@/core/domain/police-zones';
-import { displayRank, normalizeRank, rankGroupOf } from '@/core/domain/ranks';
+import { displayRank, rankGroupOf, rankSeniority } from '@/core/domain/ranks';
 import { requirementTotal, SCHEME_RANK_COLUMNS, schemeColumnOf, schemeRequirement } from '@/core/domain/scheme-requirements';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
 
@@ -29,12 +29,7 @@ function Strength({ allotted, required, onDark = false }: { allotted: number; re
   );
 }
 
-// Seniority order used for rank sorting (civil and AR ranks interleaved by grade).
-const RANK_ORDER = ['SP', 'Addl. SP', 'DSP', 'RI', 'CI', 'RSI', 'SI', 'ARSI', 'ASI', 'WASI', 'HC', 'WHC', 'ARHC', 'PC', 'WPC', 'ARPC', 'HG'];
-const rankIndex = (rank?: string | null) => {
-  const index = RANK_ORDER.indexOf(normalizeRank(rank));
-  return index === -1 ? RANK_ORDER.length : index;
-};
+const rankIndex = rankSeniority;
 type SortKey = 'rank-senior' | 'rank-junior' | 'no-point' | 'name';
 const SORTS: { value: SortKey; label: string }[] = [
   { value: 'rank-senior', label: 'Rank: senior first' },

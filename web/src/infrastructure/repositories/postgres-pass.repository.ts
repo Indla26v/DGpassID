@@ -14,6 +14,7 @@ import { query, withTransaction } from '../db/pool';
 import crypto from 'crypto';
 import type { PoolClient } from 'pg';
 import type { SessionUser } from '@/core/domain/entities/user.entity';
+import { normalizeForce, normalizeGender } from '@/core/domain/ranks';
 import { canAccessOffice, DUPLICATE_OUTSIDE_OFFICE, isOfficeId, managesAccounts, officeScope, type OfficeStatistics } from '@/core/domain/offices';
 
 const policeDistrict = "COALESCE(NULLIF(BTRIM(police_unit_district), ''), NULLIF(BTRIM(institution_other), ''), 'Tirupati')";
@@ -22,6 +23,7 @@ const passListFields = `id, office_id, pass_number, pass_type, full_name, father
   designation_or_trade, dept_hostel_quarter, mobile_number, govt_id_type, govt_id_number,
   rank, police_id_number, police_unit_district, police_zone, police_sector_number, police_sector_name,
   police_point_code, police_point_name, date_of_birth, age_years, deployment_batch_id,
+  force_category, police_station, gender,
   police_custom_sector, security_component, custom_security_component, issuing_counter_id,
   distribution_status, collected_at, collected_by_officer, handover_officer_name,
   zone_a, gate_zone_a, zone_b, gate_zone_b, zone_c, gate_zone_c, valid_from, valid_to,
@@ -43,6 +45,9 @@ const VALID_PASS_COLUMNS = new Set([
   'police_point_name',
   'date_of_birth',
   'age_years',
+  'force_category',
+  'police_station',
+  'gender',
   'deployment_batch_id',
   'police_custom_sector',
   'security_component',
@@ -87,7 +92,7 @@ const VALID_PASS_COLUMNS = new Set([
   'approved_at',
 ]);
 
-const OPTIONAL_NULLABLE_COLUMNS = ['date_of_birth', 'age_years', 'police_point_code', 'police_point_name'];
+const OPTIONAL_NULLABLE_COLUMNS = ['date_of_birth', 'age_years', 'police_point_code', 'police_point_name', 'force_category', 'police_station', 'gender'];
 function blankToNull(data: Record<string, unknown>) {
   for (const key of OPTIONAL_NULLABLE_COLUMNS) {
     if (key in data && (data[key] === '' || data[key] === undefined)) data[key] = null;
@@ -1300,6 +1305,9 @@ export class PostgresPassRepository implements IPassRepository {
                police_point_name = $20,
                date_of_birth = COALESCE($21::date, date_of_birth),
                age_years = COALESCE($22::smallint, age_years),
+               force_category = COALESCE($23, force_category),
+               police_station = COALESCE($24, police_station),
+               gender = COALESCE($25, gender),
                updated_at = NOW()
            WHERE id = $1
            RETURNING *`,
@@ -1326,6 +1334,9 @@ export class PostgresPassRepository implements IPassRepository {
             pointName,
             passData.date_of_birth || null,
             passData.age_years ?? null,
+            passData.force_category || (existingPass.force_category ? null : normalizeForce('', rank)),
+            (passData.police_station as string | undefined)?.trim() || null,
+            passData.gender || (existingPass.gender ? null : normalizeGender('', rank)),
           ]
         );
 
@@ -1344,6 +1355,8 @@ export class PostgresPassRepository implements IPassRepository {
       passData.father_or_spouse_name ||= '—';
       passData.police_unit_district ||= 'Tirupati';
       passData.institution_other ||= passData.police_unit_district;
+      passData.force_category ||= normalizeForce('', passData.rank as string);
+      passData.gender ||= normalizeGender('', passData.rank as string);
       const newPass = await this.createInTransaction(passData, actor, client);
       return { pass: newPass, isNew: true };
     });

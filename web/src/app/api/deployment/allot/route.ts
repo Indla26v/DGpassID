@@ -20,13 +20,17 @@ export async function POST(req: Request) {
     const zone = POLICE_BANDOBUSHT_ZONES.find(item => item.name === body.zone);
     const sector = zone?.sectors.find(item => item.number === body.sectorNumber);
     if (!zone || !sector) return NextResponse.json({ error: 'Choose a zone and sector from the scheme.' }, { status: 400 });
+    const subSector = typeof body.subSector === 'string' && body.subSector.trim() ? body.subSector.trim() : null;
+    if (subSector && !sector.subSectors?.includes(subSector)) {
+      return NextResponse.json({ error: 'Choose a sub-sector inside this sector.' }, { status: 400 });
+    }
     const rankGroup = RANK_GROUPS.find(item => item.group === body.rankGroup)?.group ?? 'MIXED';
 
     const result = await allotOfficers({
       passIds,
       zone: zone.name,
       sectorNumber: sector.number,
-      sectorName: sector.name,
+      sectorName: subSector ?? sector.name,
       rankGroup,
       districts: Array.isArray(body.districts) ? body.districts.filter((item: unknown) => typeof item === 'string').slice(0, 100) : [],
       requestedCount: Number.isInteger(body.requestedCount) && body.requestedCount > 0 ? body.requestedCount : passIds.length,

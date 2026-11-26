@@ -51,7 +51,7 @@ UPDATE passes p
     ('WOMENHC', 'WHC'), ('WOMANHEADCONSTABLE', 'WHC'), ('WOMENHEADCONSTABLE', 'WHC'), ('LHC', 'WHC'), ('ASI', 'ASI'), ('ASSISTANTSUBINSPECTOR', 'ASI'),
     ('ASSTSUBINSPECTOR', 'ASI'), ('WASI', 'WASI'), ('WOMANASI', 'WASI'), ('WOMENASI', 'WASI'), ('WOMANASSISTANTSUBINSPECTOR', 'WASI'), ('LASI', 'WASI'),
     ('SI', 'SI'), ('SUBINSPECTOR', 'SI'), ('SIOFPOLICE', 'SI'), ('CI', 'CI'), ('CIRCLEINSPECTOR', 'CI'), ('INSPECTOR', 'CI'),
-    ('INSPECTOROFPOLICE', 'CI'), ('DSP', 'DSP'), ('DYSP', 'DSP'), ('DEPUTYSUPERINTENDENTOFPOLICE', 'DSP'), ('ADDLSP', 'Addl. SP'), ('ADDITIONALSP', 'Addl. SP'),
+    ('INSPECTOROFPOLICE', 'CI'), ('DSP', 'DSP'), ('DYSP', 'DSP'), ('DEPUTYSUPERINTENDENTOFPOLICE', 'DSP'), ('ADDLSP', 'Addl. SP'), ('ASP', 'Addl. SP'), ('ADDITIONALSP', 'Addl. SP'),
     ('ADDLSUPERINTENDENTOFPOLICE', 'Addl. SP'), ('SP', 'SP'), ('SUPERINTENDENTOFPOLICE', 'SP'), ('ARPC', 'ARPC'), ('ARCONSTABLE', 'ARPC'), ('ARMEDRESERVEPC', 'ARPC'),
     ('ARMEDRESERVECONSTABLE', 'ARPC'), ('ARHC', 'ARHC'), ('ARHEADCONSTABLE', 'ARHC'), ('ARMEDRESERVEHC', 'ARHC'), ('ARMEDRESERVEHEADCONSTABLE', 'ARHC'), ('ARSI', 'ARSI'),
     ('ASSISTANTRESERVESUBINSPECTOR', 'ARSI'), ('ASSTRESERVESUBINSPECTOR', 'ARSI'), ('RSI', 'RSI'), ('RESERVESUBINSPECTOR', 'RSI'), ('RI', 'RI'), ('RESERVEINSPECTOR', 'RI')
@@ -63,5 +63,45 @@ UPDATE passes p
 INSERT INTO conference_configs (key, value, description)
 VALUES ('age_cutoff_years', '45', 'Officers this age or older count as "old" in the ASI/HC 40:60 old:young selection.')
 ON CONFLICT (key) DO NOTHING;
+
+-- Force category (Civil / AR / STF / Others), police station ("Place of working") and gender.
+ALTER TABLE passes
+    ADD COLUMN IF NOT EXISTS force_category varchar(16),
+    ADD COLUMN IF NOT EXISTS police_station varchar(255),
+    ADD COLUMN IF NOT EXISTS gender varchar(8);
+ALTER TABLE passes DROP CONSTRAINT IF EXISTS passes_force_category_check;
+ALTER TABLE passes ADD CONSTRAINT passes_force_category_check
+    CHECK (force_category IS NULL OR force_category IN ('CIVIL', 'AR', 'STF', 'OTHERS'));
+ALTER TABLE passes DROP CONSTRAINT IF EXISTS passes_gender_check;
+ALTER TABLE passes ADD CONSTRAINT passes_gender_check
+    CHECK (gender IS NULL OR gender IN ('MALE', 'FEMALE', 'OTHER'));
+CREATE INDEX IF NOT EXISTS idx_passes_force_category ON passes (pass_type, force_category);
+
+-- Backfill from rank (same rules as normalizeForce / normalizeGender in ranks.ts).
+UPDATE passes
+   SET force_category = CASE WHEN rank IN ('ARPC', 'ARHC', 'ARSI', 'RSI', 'RI') THEN 'AR' ELSE 'CIVIL' END
+ WHERE pass_type = 'POLICE_FORCE' AND force_category IS NULL;
+UPDATE passes
+   SET gender = CASE WHEN upper(rank) ~ '^W(PC|HC|ASI|SI)$' THEN 'FEMALE' ELSE 'MALE' END
+ WHERE pass_type = 'POLICE_FORCE' AND gender IS NULL;
+
+-- Duty instructions sent by the SP to zone / sector logins.
+CREATE TABLE IF NOT EXISTS duty_instructions (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    title varchar(200) NOT NULL,
+    heading text NOT NULL DEFAULT '',
+    closing text NOT NULL DEFAULT '',
+    entries jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(entries) = 'array'),
+    targets jsonb NOT NULL CHECK (jsonb_typeof(targets) = 'array' AND targets <> '[]'::jsonb),
+    status varchar(16) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'WITHDRAWN')),
+    version integer NOT NULL DEFAULT 1 CHECK (version > 0),
+    revision_note text,
+    created_by varchar(254) NOT NULL,
+    updated_by varchar(254) NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT NOW(),
+    updated_at timestamptz NOT NULL DEFAULT NOW(),
+    withdrawn_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS idx_duty_instructions_status ON duty_instructions (status, updated_at DESC);
 
 COMMIT;

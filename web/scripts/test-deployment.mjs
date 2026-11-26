@@ -27,6 +27,9 @@ const ranks = await import(pathToFileURL(load('src/core/domain/ranks.ts', 'ranks
 const age = await import(pathToFileURL(load('src/lib/officer-age.ts', 'officer-age.mjs')));
 const zones = await import(pathToFileURL(load('src/core/domain/police-zones.ts', 'police-zones.mjs')));
 const req = await import(pathToFileURL(load('src/core/domain/scheme-requirements.ts', 'scheme-requirements.mjs')));
+const sheet = await import(pathToFileURL(load('src/core/domain/deployment-sheet.ts', 'deployment-sheet.mjs')));
+load('src/core/domain/police-print-scope.ts', 'police-print-scope.mjs');
+const instr = await import(pathToFileURL(load('src/core/domain/duty-instructions.ts', 'duty-instructions.mjs')));
 
 let seed = 7;
 const random = max => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % max; };
@@ -100,6 +103,8 @@ test('ranks: aliases, ASI/HC display, AR ranks', () => {
   assert.equal(ranks.normalizeRank('AR HC'), 'ARHC');
   assert.equal(ranks.normalizeRank('R.I.'), 'RI');
   assert.equal(ranks.normalizeRank('Additional SP'), 'Addl. SP');
+  assert.equal(ranks.normalizeRank('ASP'), 'Addl. SP');
+  assert.equal(ranks.normalizeRank('A.S.P'), 'Addl. SP');
   for (const r of ['ASI', 'WASI', 'HC', 'WHC']) assert.equal(ranks.displayRank(r), 'ASI/HC');
   assert.equal(ranks.displayRank('ARHC'), 'ARHC');
   assert.deepEqual(ranks.ranksInGroup('ASI/HC'), ['ASI', 'WASI', 'HC', 'WHC']);
@@ -207,6 +212,111 @@ test('scheme requirements match the PDF zone and grand totals', () => {
   assert.equal(req.schemeRequirement('International Airport, Renigunta', 'Sector 1').DSP, 4);
   assert.equal(req.schemeColumnOf('WHC'), 'ASI/HC');
   assert.equal(req.schemeColumnOf('ARPC'), null);
+});
+
+test('force category: explicit values and rank-derived defaults', () => {
+  assert.equal(ranks.normalizeForce('Civil ', 'SI'), 'CIVIL');
+  assert.equal(ranks.normalizeForce('L&O', 'PC'), 'CIVIL');
+  assert.equal(ranks.normalizeForce('Armed Reserve', 'PC'), 'AR');
+  assert.equal(ranks.normalizeForce('stf', 'HC'), 'STF');
+  assert.equal(ranks.normalizeForce('Special Task Force', 'HC'), 'STF');
+  assert.equal(ranks.normalizeForce('APSP', 'PC'), 'OTHERS');
+  assert.equal(ranks.normalizeForce('', 'ARPC'), 'AR');
+  assert.equal(ranks.normalizeForce('', 'Reserve Inspector'), 'AR');
+  assert.equal(ranks.normalizeForce('', 'HC'), 'CIVIL');
+});
+
+test('gender: explicit values and W-rank default', () => {
+  assert.equal(ranks.normalizeGender('Male ', 'WPC'), 'MALE');
+  assert.equal(ranks.normalizeGender('F', 'PC'), 'FEMALE');
+  assert.equal(ranks.normalizeGender('Transgender', 'PC'), 'OTHER');
+  for (const rank of ['WPC', 'WHC', 'WASI', 'WSI', 'Woman Constable']) assert.equal(ranks.normalizeGender('', rank), 'FEMALE', rank);
+  for (const rank of ['PC', 'SI', 'ARHC', '']) assert.equal(ranks.normalizeGender('', rank), 'MALE', rank);
+});
+
+test('rank seniority orders senior ranks first, unknown last', () => {
+  const order = ['PC', 'HG', 'DSP', 'ASI', 'SP', 'XYZ', 'Addl. SP', 'HC', 'CI', 'SI'].sort((a, b) => ranks.rankSeniority(a) - ranks.rankSeniority(b));
+  assert.deepEqual(order, ['SP', 'Addl. SP', 'DSP', 'CI', 'SI', 'ASI', 'HC', 'PC', 'HG', 'XYZ']);
+  assert.equal(ranks.rankSeniority('ASP'), ranks.rankSeniority('Addl. SP'));
+});
+
+test('sector-wise blocks: scheme order, zone / sector / sub-sector headings (no points), serial reset', () => {
+  const zone1 = zones.POLICE_BANDOBUSHT_ZONES.find(z => z.id === 'ZONE-1');
+  const zone2 = zones.POLICE_BANDOBUSHT_ZONES.find(z => z.id === 'ZONE-2');
+  const sector2 = zone2.sectors.find(s => s.subSectors?.length);
+  const sub = sector2.subSectors[0];
+  const subPoints = zones.dutyPointsFor(zone2.name, sector2.number, sub);
+  const z1Point = zones.dutyPointsFor(zone1.name, zone1.sectors[0].number, null)[0];
+  assert.ok(subPoints.length >= 2 && z1Point);
+  const base = { police_id_number: '1', police_station: 'PS', mobile_number: '9000000000', district: 'Tirupati', police_custom_sector: null };
+  const at = (zone, sector, sectorName, point) => ({
+    police_zone: zone.name, police_sector_number: sector.number, police_sector_name: sectorName,
+    police_point_code: point?.code ?? null, police_point_name: point?.name ?? null,
+  });
+  const officers = [
+    { ...base, full_name: 'Z PC', rank: 'PC', ...at(zone2, sector2, sub, subPoints[1]) },
+    { ...base, full_name: 'A SI', rank: 'SI', ...at(zone2, sector2, sub, subPoints[1]) },
+    { ...base, full_name: 'B HC', rank: 'HC', ...at(zone2, sector2, sub, null) },
+    { ...base, full_name: 'E HC', rank: 'HC', ...at(zone2, sector2, sector2.name, null) },
+    { ...base, full_name: 'C PC', rank: 'PC', police_zone: null, police_sector_number: null, police_sector_name: null, police_point_code: null, police_point_name: null },
+    { ...base, full_name: 'D DSP', rank: 'DSP', ...at(zone1, zone1.sectors[0], zone1.sectors[0].name, z1Point) },
+  ];
+  const blocks = sheet.buildSectorWiseBlocks(officers);
+  // Officers on a point and without one share the sub-sector block; no point lines.
+  assert.equal(blocks.length, 4);
+  assert.deepEqual(blocks[0].heading, [`Zone ${zone1.number}: ${zone1.name} | ${zone1.sectors[0].number}: ${zone1.sectors[0].name}`]);
+  assert.deepEqual(blocks[1].heading, [`Zone ${zone2.number}: ${zone2.name} | ${sector2.number}: ${sector2.name}`]);
+  assert.deepEqual(blocks[1].rows.map(r => [r[0], r[3]]), [['1', 'E HC']]);
+  assert.deepEqual(blocks[2].heading, [`Zone ${zone2.number}: ${zone2.name} | ${sector2.number}: ${sector2.name}`, `Sub-sector: ${sub}`]);
+  assert.deepEqual(blocks[2].rows.map(r => [r[0], r[1], r[3]]), [['1', 'SI', 'A SI'], ['2', 'HC', 'B HC'], ['3', 'PC', 'Z PC']]);
+  assert.deepEqual(blocks[3].heading, [sheet.NOT_ALLOTTED]);
+  assert.ok(blocks.every(block => block.heading.every(line => !line.startsWith('Point'))));
+  assert.equal(blocks[0].rows[0].length, sheet.SECTOR_WISE_COLUMNS.length);
+  assert.deepEqual(blocks[0].rows[0].slice(4), ['PS', '9000000000', 'Tirupati']);
+});
+
+test('duty instruction validation: cleans rows, checks dates, times and targets', () => {
+  const zone2 = zones.POLICE_BANDOBUSHT_ZONES.find(z => z.id === 'ZONE-2');
+  const ok = instr.validateInstruction({
+    title: '  Phase-I  ', heading: instr.DEFAULT_HEADING, closing: instr.DEFAULT_CLOSING,
+    entries: [
+      { entity: 'Accommodation', date: '', time: '', place: '' },
+      { entity: 'Briefing', date: '2026-07-18', time: '16:00', place: 'Police Complex, Tirumala' },
+      { entity: '', date: '', time: '', place: '' },
+    ],
+    targets: [{ zone: zone2.name, sector: 'Sector 1' }],
+  });
+  assert.ok('value' in ok, JSON.stringify(ok));
+  assert.equal(ok.value.title, 'Phase-I');
+  assert.equal(ok.value.entries.length, 2);
+  assert.deepEqual(instr.instructionRows(ok.value.entries), [
+    ['1', 'Accommodation', '-', '-', '-'],
+    ['2', 'Briefing', '18-07-2026', '16:00', 'Police Complex, Tirumala'],
+  ]);
+  assert.equal(instr.formatEntryCell('place', { entity: 'x', date: '', time: '', place: 'NaN' }), '-');
+  const base = { title: 'T', entries: [{ entity: 'Briefing', date: '', time: '', place: '' }], targets: [{ zone: zone2.name, sector: null }] };
+  assert.ok('error' in instr.validateInstruction({ ...base, title: ' ' }));
+  assert.ok('error' in instr.validateInstruction({ ...base, entries: [] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, entries: [{ entity: 'B', date: '2026-02-30', time: '', place: '' }] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, entries: [{ entity: 'B', date: '', time: '24:00', place: '' }] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, entries: [{ entity: '', date: '', time: '', place: 'Gate' }] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, targets: [] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, targets: [{ zone: 'Nowhere', sector: null }] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, targets: [{ zone: zone2.name, sector: 'Sector 99' }] }));
+  assert.ok('error' in instr.validateInstruction({ ...base, entries: Array.from({ length: 31 }, () => ({ entity: 'x', date: '', time: '', place: '' })) }));
+  assert.equal(instr.validateInstruction({ ...base, entries: [{ entity: 'x'.repeat(500), date: '', time: '', place: '' }] }).value.entries[0].entity.length, 300);
+});
+
+test('duty instruction visibility follows zone / sector scope', () => {
+  const [a, b] = zones.POLICE_BANDOBUSHT_ZONES;
+  const whole = [{ zone: a.name, sector: null }];
+  const sector1 = [{ zone: a.name, sector: a.sectors[0].number }];
+  assert.equal(instr.instructionVisibleTo(whole, [{ zone: a.name, sector: 'Sector 7' }]), true);
+  assert.equal(instr.instructionVisibleTo(sector1, [{ zone: a.name, sector: null }]), true);
+  assert.equal(instr.instructionVisibleTo(sector1, [{ zone: a.name, sector: a.sectors[0].number }]), true);
+  assert.equal(instr.instructionVisibleTo(sector1, [{ zone: a.name, sector: 'Other sector' }]), false);
+  assert.equal(instr.instructionVisibleTo(whole, [{ zone: b.name, sector: null }]), false);
+  assert.equal(instr.instructionVisibleTo(whole, []), false);
 });
 
 fs.rmSync(out, { recursive: true, force: true });

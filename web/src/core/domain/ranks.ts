@@ -43,7 +43,7 @@ const RANK_ALIASES: Record<string, PoliceRank> = {
   SI: 'SI', SUBINSPECTOR: 'SI', SIOFPOLICE: 'SI',
   CI: 'CI', CIRCLEINSPECTOR: 'CI', INSPECTOR: 'CI', INSPECTOROFPOLICE: 'CI',
   DSP: 'DSP', DYSP: 'DSP', DEPUTYSUPERINTENDENTOFPOLICE: 'DSP',
-  ADDLSP: 'Addl. SP', ADDITIONALSP: 'Addl. SP', ADDLSUPERINTENDENTOFPOLICE: 'Addl. SP',
+  ADDLSP: 'Addl. SP', ASP: 'Addl. SP', ADDITIONALSP: 'Addl. SP', ADDLSUPERINTENDENTOFPOLICE: 'Addl. SP',
   SP: 'SP', SUPERINTENDENTOFPOLICE: 'SP',
   ARPC: 'ARPC', ARCONSTABLE: 'ARPC', ARMEDRESERVEPC: 'ARPC', ARMEDRESERVECONSTABLE: 'ARPC',
   ARHC: 'ARHC', ARHEADCONSTABLE: 'ARHC', ARMEDRESERVEHC: 'ARHC', ARMEDRESERVEHEADCONSTABLE: 'ARHC',
@@ -78,4 +78,50 @@ export function ranksInGroup(groupOrRank: string): string[] {
 
 export function isArRank(rank?: string | null): boolean {
   return (AR_RANKS as readonly string[]).includes(normalizeRank(rank));
+}
+
+
+/** Force categories recorded on import and offered in filters. */
+export const FORCE_CATEGORIES = ['CIVIL', 'AR', 'STF', 'OTHERS'] as const;
+export type ForceCategory = (typeof FORCE_CATEGORIES)[number];
+export const FORCE_LABELS: Record<ForceCategory, string> = { CIVIL: 'Civil', AR: 'AR', STF: 'STF', OTHERS: 'Others' };
+
+export function isForceCategory(value: unknown): value is ForceCategory {
+  return typeof value === 'string' && (FORCE_CATEGORIES as readonly string[]).includes(value);
+}
+
+/** Maps a roster "Force" value to a category. Blank values are derived from the rank (AR ranks = AR). */
+export function normalizeForce(raw?: string | null, rank?: string | null): ForceCategory {
+  const value = compact(raw ?? '');
+  if (!value) return isArRank(rank) ? 'AR' : 'CIVIL';
+  if (['CIVIL', 'CIVILPOLICE', 'LO', 'LAWANDORDER', 'LANDO', 'CVL'].includes(value)) return 'CIVIL';
+  if (['AR', 'ARMEDRESERVE', 'ARMEDRESERVEPOLICE', 'ARPOLICE'].includes(value)) return 'AR';
+  if (['STF', 'SPECIALTASKFORCE'].includes(value)) return 'STF';
+  return 'OTHERS';
+}
+
+export const GENDERS = ['MALE', 'FEMALE', 'OTHER'] as const;
+export type Gender = (typeof GENDERS)[number];
+
+/** True for women's ranks: WPC, WHC, WASI, WSI. */
+export function isWomenRank(rank?: string | null): boolean {
+  return /^W(PC|HC|ASI|SI)$/.test(normalizeRank(rank));
+}
+
+/** Maps a roster gender value. Blank values are derived from the rank (W-ranks = Female, others = Male). */
+export function normalizeGender(raw?: string | null, rank?: string | null): Gender {
+  const value = compact(raw ?? '');
+  if (!value) return isWomenRank(rank) ? 'FEMALE' : 'MALE';
+  if (['M', 'MALE', 'MAN', 'GENTS'].includes(value)) return 'MALE';
+  if (['F', 'FEMALE', 'WOMAN', 'WOMEN', 'LADY', 'LADIES'].includes(value)) return 'FEMALE';
+  return 'OTHER';
+}
+
+/** Ranks from senior to junior, used to order lists and exports. */
+export const RANK_SENIORITY = ['SP', 'Addl. SP', 'DSP', 'RI', 'CI', 'RSI', 'SI', 'WSI', 'ARSI', 'ASI', 'WASI', 'HC', 'WHC', 'ARHC', 'PC', 'WPC', 'ARPC', 'HG'];
+
+/** Seniority index of a rank (0 = most senior); unknown ranks sort last. */
+export function rankSeniority(rank?: string | null): number {
+  const index = RANK_SENIORITY.indexOf(normalizeRank(rank));
+  return index === -1 ? RANK_SENIORITY.length : index;
 }

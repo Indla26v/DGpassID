@@ -1,5 +1,6 @@
 'use client';
 
+import { FORCE_LABELS, normalizeForce } from '@/core/domain/ranks';
 import React, { useMemo, useRef, useState } from 'react';
 import { PillButton } from '../common/PillButton';
 import { parsePoliceRoster, readPoliceRosterPhoto, type PoliceRosterRow } from '@/lib/police-roster-import';
@@ -374,7 +375,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
                   <th scope="col" className="px-3 py-2">Include</th>
                   <th scope="col" className="px-3 py-2">Photograph</th>
                   <th scope="col" className="px-3 py-2">Officer</th>
-                  <th scope="col" className="px-3 py-2">District / unit</th>
+                  <th scope="col" className="px-3 py-2">District / station / force</th>
                   <th scope="col" className="px-3 py-2">Duty assignment</th>
                   <th scope="col" className="px-3 py-2 text-right">Review</th>
                 </tr>
@@ -415,7 +416,13 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
                         <p className="font-semibold text-police-navy">{record.full_name || 'Missing name'}</p>
                         <p className="text-slate-500">{[record.rank, record.police_id_number, record.mobile_number].filter(Boolean).join(' · ')}</p>
                       </th>
-                      <td className="px-3 py-2">{record.police_unit_district || '—'}</td>
+                      <td className="px-3 py-2">
+                        <p>{record.police_unit_district || '—'}</p>
+                        {record.police_station && <p className="text-slate-500">{record.police_station}</p>}
+                        {(record.force_category || record.gender) && (
+                          <p className="text-slate-500">{[record.force_category && FORCE_LABELS[normalizeForce(record.force_category, record.rank)], record.gender].filter(Boolean).join(' · ')}</p>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <p className="font-medium">{record.police_zone || 'Unassigned'}</p>
                         {record.police_sector_name && <p className="text-slate-500">{record.police_sector_number} · {record.police_sector_name}</p>}

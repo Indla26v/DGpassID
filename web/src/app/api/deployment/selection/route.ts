@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { authorizeRequest } from '@/lib/auth/session-helper';
-import { RANK_GROUPS } from '@/core/domain/ranks';
+import { isForceCategory, RANK_GROUPS } from '@/core/domain/ranks';
 import { officerAge } from '@/lib/officer-age';
 import { getAgeCutoffYears, listSelectionPool } from '@/modules/deployment/deployment.repository';
 import { selectOfficers } from '@/modules/deployment/selection';
@@ -30,7 +30,8 @@ export async function POST(req: Request) {
     if (districts.length > 100) return NextResponse.json({ error: 'Choose at most 100 districts.' }, { status: 400 });
 
     const cutoff = await getAgeCutoffYears();
-    const pool = await listSelectionPool([...group.ranks], districts, Boolean(body.includeAllotted));
+    if (body.force && !isForceCategory(body.force)) return NextResponse.json({ error: 'Choose a force category.' }, { status: 400 });
+    const pool = await listSelectionPool([...group.ranks], districts, Boolean(body.includeAllotted), body.force || undefined);
     const ages = new Map(pool.map(officer => [officer.id, officerAge(officer)]));
     if (poolOnly) {
       return NextResponse.json({

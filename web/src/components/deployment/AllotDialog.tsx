@@ -15,6 +15,7 @@ interface SectorSummary {
   allotted: Record<string, number>;
   other: Record<string, number>;
   total: number;
+  subSectors?: { name: string; required: RankRequirement | null; allotted: Record<string, number> }[];
 }
 
 export interface AllotDialogOfficer {
@@ -28,24 +29,28 @@ export interface AllotDialogOfficer {
 
 /** Popup for allotting one or more officers to a zone and sector. */
 export function AllotDialog({
-  officers, rankGroup, initialZone, initialSector, busy, error, onConfirm, onClose,
+  officers, rankGroup, initialZone, initialSector, initialSubSector = '', busy, error, onConfirm, onClose,
 }: {
   officers: AllotDialogOfficer[];
   rankGroup: string;
   initialZone: string;
   initialSector: string;
+  initialSubSector?: string;
   busy: boolean;
   error: string;
-  onConfirm: (zoneName: string, sectorNumber: string) => void;
+  onConfirm: (zoneName: string, sectorNumber: string, subSector: string) => void;
   onClose: () => void;
 }) {
   const dialogRef = useDialog(true, () => { if (!busy) onClose(); });
   const [zoneName, setZoneName] = useState(initialZone);
   const [sectorNumber, setSectorNumber] = useState(initialSector);
+  const [subSector, setSubSector] = useState(initialSubSector);
   const [summary, setSummary] = useState<SectorSummary | null>(null);
   const zone = POLICE_BANDOBUSHT_ZONES.find(item => item.name === zoneName);
   const sector = zone?.sectors.find(item => item.number === sectorNumber);
   const single = officers.length === 1;
+  const subSectors = sector?.subSectors ?? [];
+  const chosenSub = subSectors.includes(subSector) ? subSector : '';
 
   // Scheme requirement vs officers already allotted to the chosen sector, by rank.
   useEffect(() => {
@@ -65,6 +70,12 @@ export function AllotDialog({
   const needed = column && summary?.required ? summary.required[column] ?? 0 : null;
   const have = column ? summary?.allotted[column] ?? 0 : 0;
   const after = have + adding;
+  // Strength of the chosen sub-sector, when the scheme gives one.
+  const subSummary = chosenSub ? summary?.subSectors?.find(item => item.name === chosenSub) : undefined;
+  const subAllotted = subSummary ? Object.values(subSummary.allotted).reduce((sum, n) => sum + n, 0) : 0;
+  const subRequired = subSummary?.required ? requirementTotal(subSummary.required) : null;
+  const subNeeded = column && subSummary?.required ? subSummary.required[column] ?? 0 : null;
+  const subHave = column && subSummary ? subSummary.allotted[column] ?? 0 : 0;
 
   return createPortal(
     <div className="no-print fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-3 sm:p-5"
@@ -100,15 +111,22 @@ export function AllotDialog({
             <div className="min-w-0 space-y-1">
               <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Zone</span>
               <CustomSelect ariaLabel="Zone" wrapValue value={zoneName} placeholder="Choose zone"
-                onChange={value => { setZoneName(value); setSectorNumber(''); }}
+                onChange={value => { setZoneName(value); setSectorNumber(''); setSubSector(''); }}
                 options={POLICE_BANDOBUSHT_ZONES.map(item => ({ value: item.name, label: `Zone ${item.number}: ${item.name}` }))} />
             </div>
             <div className="min-w-0 space-y-1">
               <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Sector</span>
               <CustomSelect ariaLabel="Sector" wrapValue searchable value={sectorNumber} disabled={!zone}
-                placeholder={zone ? 'Choose sector' : 'Choose a zone first'} onChange={setSectorNumber}
+                placeholder={zone ? 'Choose sector' : 'Choose a zone first'} onChange={value => { setSectorNumber(value); setSubSector(''); }}
                 options={(zone?.sectors ?? []).map(item => ({ value: item.number, label: `${item.number}: ${item.name}` }))} />
             </div>
+            {subSectors.length > 0 && (
+              <div className="min-w-0 space-y-1 sm:col-span-2">
+                <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Sub-sector <span className="font-normal text-slate-500">(optional)</span></span>
+                <CustomSelect ariaLabel="Sub-sector" wrapValue searchable value={chosenSub} onChange={setSubSector}
+                  options={[{ value: '', label: 'Whole sector (no sub-sector yet)' }, ...subSectors.map(item => ({ value: item, label: item }))]} />
+              </div>
+            )}
           </div>
 
           {zone && sector && (
@@ -117,6 +135,13 @@ export function AllotDialog({
                 <p className="text-slate-500">Loading the sector’s strength…</p>
               ) : (
                 <>
+                  {chosenSub && (
+                    <p className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm text-indigo-950">
+                      <span className="font-semibold">{chosenSub}</span>
+                      {': '}{subAllotted}{subRequired ? ` of ${subRequired}` : ''} allotted
+                      {subNeeded !== null && column ? ` · ${column} ${subHave} of ${subNeeded} → ${subHave + adding}` : ''}
+                    </p>
+                  )}
                   {column && needed !== null && (
                     <p className={`rounded-xl px-3 py-2 text-sm ${after > needed ? 'bg-rose-50 text-rose-800' : after === needed ? 'bg-emerald-50 text-emerald-900' : 'bg-white text-police-navy'}`}>
                       <span className="font-semibold">{column}: {have} of {needed} needed</span>
@@ -165,9 +190,9 @@ export function AllotDialog({
         <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 p-3">
           <PillButton type="button" variant="outline" disabled={busy} onClick={onClose}>Cancel</PillButton>
           <PillButton type="button" variant="crimson" disabled={busy || !zone || !sector}
-            icon={<Send aria-hidden="true" className="size-3.5" />} onClick={() => onConfirm(zoneName, sectorNumber)}>
+            icon={<Send aria-hidden="true" className="size-3.5" />} onClick={() => onConfirm(zoneName, sectorNumber, chosenSub)}>
             {busy ? 'Allotting…' : zone && sector
-              ? `Allot ${single ? '' : `${officers.length} `}to Zone ${zone.number} · ${sector.number}`
+              ? `Allot ${single ? '' : `${officers.length} `}to Zone ${zone.number} · ${sector.number}${chosenSub ? ` · ${chosenSub.match(/^\d+\(\w\)/)?.[0] ?? 'sub-sector'}` : ''}`
               : `Allot ${single ? 'officer' : `${officers.length} officers`}`}
           </PillButton>
         </footer>

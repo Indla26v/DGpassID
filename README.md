@@ -54,6 +54,18 @@ After the shared schema and office migration, apply [police-force-passes.sql](we
 
 - **Ranks:** ASI, WASI, HC and WHC are stored separately and shown as **ASI/HC**. AR component ranks: RI, RSI, ARSI, ARHC, ARPC.
 - **Roster import:** Zone, Sector, Sub-sector, Point and Date of Birth / Age columns are optional. Rows without them import with no duty posting (and keep any existing posting on re-import); unrecognised values import the officer and show a warning.
+- **Force, police station and gender:** optional import columns **Force** (Civil, AR, STF; any other value counts as Others), **Police Station** (or *Place of Working* / *PS*) and **Gender**. A blank Force comes from the rank (AR ranks = AR, otherwise Civil). A blank Gender also comes from the rank (WPC, WHC, WASI, WSI = Female, otherwise Male). A re-import with blank columns keeps the stored values. Officer Selection, Duty Points and Export each have a **Force** filter.
+- **Exports (SP / zone officer):** Police Force → Export downloads Excel, CSV or PDF in the sector-wise "Final" format:
+  - title rows, then the columns S. No., Rank, G.No., Name, Place of working, Mobile No., District
+  - a heading for each Zone | Sector and Sub-sector (duty points are not listed)
+  - officers numbered from 1 under each heading, senior ranks first
+- **Dashboard (SP):** Police Force → Dashboard shows:
+  - totals
+  - rank-wise strength by zone, sector and sub-sector against the scheme requirement
+  - district, force and gender charts, rank bars and a district × rank abstract
+- **Duty instructions:**
+  - **SP:** Police Force → Instructions creates a reporting instruction: heading, a table of Report Entities with Date, Time and Place, and a closing line. The default rows are Accommodation, Briefing, Spot Briefing, Rehearsal and Final Duty, and every part can be edited. The SP sends it to all zones, chosen zones, or sectors of one zone. A sent instruction can be edited (zone logins see it marked **Updated**, with the SP's note) or withdrawn.
+  - **Zone / sector logins:** they see instructions for their area under **Instructions** and can print each one as a PDF.
 - **Officer Selection (SP):** Police Force → Officer Selection. Pick a rank, districts and a count; Auto-select picks officers at random (ASI/HC: ASI 20% · WASI 5% · HC 70% · WHC 5%, 40% old / 60% young, old = aged 45+ by default). Adjust the ticks and allot them to a zone and sector.
 - **Duty Points:** create a **Zone / sector officer** under Team with the zones or sectors they manage. They sign in to **Duty Points** and place allotted officers on sub-sectors and duty points (seeded from the zonal scheme in `web/src/core/domain/bandobast-points.json`).
 - See [docs/microservices-plan.md](docs/microservices-plan.md) for the plan to split the app into services.
