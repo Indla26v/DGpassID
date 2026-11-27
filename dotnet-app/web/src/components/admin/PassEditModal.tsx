@@ -58,11 +58,11 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
   const [status, setStatus] = useState<PassStatus>(pass.status);
 
   const [zoneA, setZoneA] = useState(pass.zone_a);
-  const [gateZoneA, setGateZoneA] = useState(pass.gate_zone_a || '');
+  const [gateZoneA] = useState(pass.gate_zone_a || '');
   const [zoneB, setZoneB] = useState(pass.zone_b);
-  const [gateZoneB, setGateZoneB] = useState(pass.gate_zone_b || '');
+  const [gateZoneB] = useState(pass.gate_zone_b || '');
   const [zoneC, setZoneC] = useState(pass.zone_c);
-  const [gateZoneC, setGateZoneC] = useState(pass.gate_zone_c || '');
+  const [gateZoneC] = useState(pass.gate_zone_c || '');
 
   const [photoUrl, setPhotoUrl] = useState<string>(pass.photo_url || '');
   const [isCameraOpen, setIsCameraOpen] = useState(false);

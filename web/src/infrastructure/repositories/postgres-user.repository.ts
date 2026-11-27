@@ -1,16 +1,26 @@
 import { IUserRepository } from '@/core/interfaces/user-repository.interface';
 import { UserEntity, UserRole, SessionUser } from '@/core/domain/entities/user.entity';
 import type { OfficeId } from '@/core/domain/offices';
+import type { PolicePrintScope } from '@/core/domain/police-print-scope';
+import { SESSION_IDLE_MINUTES, SESSION_MAX_HOURS } from '@/core/domain/session-lifetime';
 import { query, withTransaction } from '../db/pool';
 
 export class PostgresUserRepository implements IUserRepository {
   async findByEmail(email: string): Promise<UserEntity | null> {
     const normalized = email.trim().toLowerCase();
     const res = await query<UserEntity>(
-      'SELECT id, email, name, role, office_id AS "officeId", password_hash, is_active, created_at FROM app_users WHERE email = $1',
+      'SELECT id, email, name, role, office_id AS "officeId", police_print_scope AS "policePrintScope", password_hash, is_active, created_at FROM app_users WHERE email = $1',
       [normalized]
     );
     return res.rows[0] || null;
+  }
+
+  async resolveUsername(username: string): Promise<string | null> {
+    const { rows } = await query<{ email: string }>(
+      "SELECT email FROM app_users WHERE split_part(email, '@', 1) = $1 LIMIT 2",
+      [username],
+    );
+    return rows.length === 1 ? rows[0].email : null;
   }
 
   async findById(id: string): Promise<UserEntity | null> {
@@ -23,20 +33,28 @@ export class PostgresUserRepository implements IUserRepository {
 
   async list(): Promise<Omit<UserEntity, 'password_hash'>[]> {
     const res = await query<Omit<UserEntity, 'password_hash'>>(
-      'SELECT id, email, name, role, office_id AS "officeId", is_active, created_at FROM app_users ORDER BY created_at ASC'
+      'SELECT id, email, name, role, office_id AS "officeId", police_print_scope AS "policePrintScope", is_active, created_at FROM app_users ORDER BY created_at ASC'
     );
     return res.rows;
   }
 
-  async create(email: string, name: string, role: UserRole, passwordHash: string, officeId: OfficeId | null): Promise<Omit<UserEntity, 'password_hash'>> {
+  async create(email: string, name: string, role: UserRole, passwordHash: string, officeId: OfficeId | null, scope: PolicePrintScope[] = []): Promise<Omit<UserEntity, 'password_hash'>> {
     const normalized = email.trim().toLowerCase();
     const res = await query<Omit<UserEntity, 'password_hash'>>(
-      `INSERT INTO app_users (email, name, role, office_id, password_hash, is_active)
-       VALUES ($1, $2, $3, $4, $5, true)
-       RETURNING id, email, name, role, office_id AS "officeId", is_active, created_at`,
-      [normalized, name.trim(), role, officeId, passwordHash]
+      `INSERT INTO app_users (email, name, role, office_id, password_hash, is_active, police_print_scope)
+       VALUES ($1, $2, $3, $4, $5, true, $6)
+       RETURNING id, email, name, role, office_id AS "officeId", police_print_scope AS "policePrintScope", is_active, created_at`,
+      [normalized, name.trim(), role, officeId, passwordHash, JSON.stringify(scope)]
     );
     return res.rows[0];
+  }
+
+  async setPolicePrintScope(id: string, scope: PolicePrintScope[]): Promise<boolean> {
+    const result = await query(
+      "UPDATE app_users SET police_print_scope = $2 WHERE id = $1 AND role IN ('POLICE_PRINT', 'BANDOBAST_OFFICER')",
+      [id, JSON.stringify(scope)],
+    );
+    return Boolean(result.rowCount);
   }
 
   async setActive(id: string, isActive: boolean, districtAdmin: boolean): Promise<boolean> {
@@ -86,17 +104,32 @@ export class PostgresUserRepository implements IUserRepository {
     await query('DELETE FROM auth_login_attempts WHERE email = $1', [normalized]);
   }
 
-  async createSession(tokenHash: string, userId: string, durationHours: number = 8): Promise<void> {
+  async createSession(tokenHash: string, userId: string): Promise<void> {
     await query(
       `INSERT INTO app_sessions (token_hash, user_id, expires_at)
-       VALUES ($1, $2, NOW() + ($3 || ' hours')::INTERVAL)`,
-      [tokenHash, userId, durationHours.toString()]
+       VALUES ($1, $2, NOW() + $3 * INTERVAL '1 minute')`,
+      [tokenHash, userId, SESSION_IDLE_MINUTES]
     );
+  }
+
+  async renewSession(tokenHash: string): Promise<SessionUser | null> {
+    const { rows } = await query<SessionUser>(
+      `UPDATE app_sessions s
+       SET expires_at = GREATEST(s.expires_at, LEAST(
+         NOW() + $2 * INTERVAL '1 minute', s.created_at + $3 * INTERVAL '1 hour'
+       ))
+       FROM app_users u
+       WHERE s.token_hash = $1 AND s.user_id = u.id AND s.expires_at > NOW() AND u.is_active
+       RETURNING u.id, u.email, u.name, u.role, u.office_id AS "officeId",
+                 u.police_print_scope AS "policePrintScope"`,
+      [tokenHash, SESSION_IDLE_MINUTES, SESSION_MAX_HOURS],
+    );
+    return rows[0] ?? null;
   }
 
   async findSessionUser(tokenHash: string): Promise<SessionUser | null> {
     const res = await query<SessionUser>(
-      `SELECT u.id, u.email, u.name, u.role, u.office_id AS "officeId"
+      `SELECT u.id, u.email, u.name, u.role, u.office_id AS "officeId", u.police_print_scope AS "policePrintScope"
        FROM app_sessions s
        JOIN app_users u ON u.id = s.user_id
        WHERE s.token_hash = $1

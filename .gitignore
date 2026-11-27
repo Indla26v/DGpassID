@@ -1,12 +1,14 @@
 # Node / Next.js
 node_modules/
 .next/
+.next-local-*/
 out/
 build/
 dist/
 .vercel/
 *.tsbuildinfo
 next-env.d.ts
+/local_db_data/
 
 # .NET / Build outputs
 bin/

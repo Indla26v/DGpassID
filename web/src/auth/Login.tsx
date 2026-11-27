@@ -8,9 +8,10 @@ import { AuthUser } from './AuthProvider';
 
 interface LoginProps {
   onSignedIn: (user: AuthUser) => void;
+  sessionMessage: string;
 }
 
-export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
+export const Login: React.FC<LoginProps> = ({ onSignedIn, sessionMessage }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,14 +29,19 @@ export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data.error || 'Unable to sign in.');
+        setError(typeof data?.error === 'string' ? data.error : 'Sign-in is temporarily unavailable. Refresh the page and try again.');
+        return;
+      }
+      if (!data?.user?.id) {
+        setError('Sign-in is temporarily unavailable. Refresh the page and try again.');
+        return;
       }
       setPassword('');
       onSignedIn(data.user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in.');
+    } catch {
+      setError('Could not reach the sign-in service. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -80,6 +86,11 @@ export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
             </div>
           </div>
           <h2 className="mt-5 text-2xl font-semibold text-[#0B2545]">Sign in to your workspace</h2>
+          {sessionMessage && (
+            <p role="status" className="mt-3 rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+              {sessionMessage}
+            </p>
+          )}
           <p className="mt-2 text-sm leading-6 text-slate-500">
             Use your administrator or print team account. Your account determines the tools you can access.
           </p>
@@ -144,6 +155,3 @@ export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
     </main>
   );
 };
-
-export default Login;
-

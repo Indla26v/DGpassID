@@ -4,7 +4,7 @@ import { useId } from 'react';
 import { InstitutionType } from '@/core/domain/types/pass-status.enum';
 
 export function InstitutionSelector({ value, onChange }: {
-  value: InstitutionType;
+  value: InstitutionType | '';
   onChange: (institution: InstitutionType) => void;
 }) {
   const name = useId();

@@ -1,0 +1,3 @@
+export const SESSION_IDLE_MINUTES = 15;
+export const SESSION_IDLE_MS = SESSION_IDLE_MINUTES * 60_000;
+export const SESSION_MAX_HOURS = 8;

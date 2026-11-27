@@ -16,10 +16,9 @@ import {
 } from '@/core/domain/entities/pass.entity';
 import {
   InstitutionType,
-  CategoryType,
   GovtIdType,
 } from '@/core/domain/types/pass-status.enum';
-import { X, Edit3, Camera, Upload, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Edit3, Camera, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface PrintTeamEditModalProps {
   pass: PassEntity | null;
@@ -71,7 +70,7 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
   const [govtIdNumber, setGovtIdNumber] = useState(pass.govt_id_number || '');
   const [validFrom, setValidFrom] = useState(toIsoDate(pass.valid_from, '2026-11-27'));
   const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-11-30'));
-  const [operatorName, setOperatorName] = useState('Print Station Operator');
+  const operatorName = 'Print Station Operator';
 
   const [zoneA, setZoneA] = useState(pass.zone_a ?? true);
   const [zoneB, setZoneB] = useState(pass.zone_b ?? true);

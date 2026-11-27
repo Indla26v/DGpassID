@@ -3,11 +3,11 @@
 import React from 'react';
 import { HeaderLogo } from './HeaderLogo';
 import { AppLogo } from './AppLogo';
-import { Shield, Printer, History, ArrowUpRight, LogOut, Users } from 'lucide-react';
-import { canViewTeam, OFFICES } from '@/core/domain/offices';
+import { LayoutDashboard, ShieldCheck, Building2, Printer, History, LogOut, Settings } from 'lucide-react';
+import { OFFICES, isSubdivisionUser } from '@/core/domain/offices';
 import { useAuth } from '@/auth/AuthProvider';
 
-export type ActivePortal = 'admin' | 'print' | 'users';
+export type ActivePortal = 'dashboard' | 'police' | 'deployment' | 'admin' | 'print' | 'administration';
 
 interface NavbarProps {
   activePortal: ActivePortal;
@@ -21,10 +21,21 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuditLogs,
 }) => {
   const { user, signOut } = useAuth();
+  const isSubdiv = isSubdivisionUser(user);
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard, visible: user.role === 'ADMIN' && !isSubdiv },
+    { id: 'police', label: 'Police Force', Icon: ShieldCheck, visible: user.role === 'POLICE_PRINT' || (user.role === 'ADMIN' && !isSubdiv) },
+    { id: 'deployment', label: 'Police Force', Icon: ShieldCheck, visible: user.role === 'BANDOBAST_OFFICER' },
+    { id: 'admin', label: 'Campus & Agencies', Icon: Building2, visible: user.role === 'ADMIN' },
+    // Print queues now live inside Police Force and Campus & Agencies; the print team keeps its own page.
+    { id: 'print', label: 'ID Print Team', Icon: Printer, visible: user.role === 'PRINT_TEAM' },
+    { id: 'administration', label: 'Administration', Icon: Settings, visible: user.role === 'ADMIN' },
+  ].filter((item) => item.visible);
 
   return (
-    <header className="no-print sticky top-0 z-40 bg-[#0B2545] text-white shadow-sm">
-      <div className="workspace-width flex items-center justify-between gap-4 py-5">
+    <header className="no-print relative z-40 bg-[#0B2545] text-white shadow-sm lg:sticky lg:top-0">
+      <div className="workspace-width flex items-center justify-between gap-4 py-3">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <HeaderLogo type="police" size={48} />
           <div className="min-w-0">
@@ -45,48 +56,39 @@ export const Navbar: React.FC<NavbarProps> = ({
           <HeaderLogo type="iiser" size={48} />
         </div>
       </div>
-      <div className="border-t border-white/10 bg-[#061527] border-b-2 border-b-[#8B1A1A]">
-        <div className="workspace-width flex items-center justify-between gap-2 py-2">
-          <nav aria-label="Workspace" className="flex items-center gap-1 rounded-xl">
-            {[
-              { id: 'admin', label: 'Admin Portal', Icon: Shield },
-              { id: 'print', label: user.role === 'ADMIN' ? 'Print Queue' : 'ID Print Team', Icon: Printer },
-              { id: 'users', label: 'Team', Icon: Users },
-            ]
-              .filter((f) => f.id === 'print' || (f.id === 'users' ? canViewTeam(user) : user.role === 'ADMIN'))
-              .map(({ id, label, Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-current={activePortal === id ? 'page' : undefined}
-                  onClick={() => onPortalChange(id as ActivePortal)}
-                  className={`flex min-h-10 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-all sm:px-5 ${
-                    activePortal === id
-                      ? id === 'admin'
-                        ? 'bg-white text-[#0B2545] shadow-sm'
-                        : 'bg-[#8B1A1A] text-white shadow-sm'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  {label}
-                </button>
-              ))}
+      <div className="border-b-2 border-t border-b-[#8B1A1A] border-t-white/10 bg-[#061527]">
+        <div className="workspace-width flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
+          <nav aria-label="Workspace" className="flex min-w-0 flex-wrap items-center gap-1 sm:flex-1">
+            {navItems.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={activePortal === id ? 'page' : undefined}
+                onClick={() => onPortalChange(id as ActivePortal)}
+                className={`inline-flex min-h-9 items-center gap-1.5 operations-action px-2.5 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-3 ${
+                  activePortal === id
+                    ? 'bg-[#8B1A1A] text-white shadow-sm'
+                    : 'text-slate-200 hover:bg-[#8B1A1A]/75 hover:text-white'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </nav>
-          <div className="flex items-center gap-2">
-            <span className="hidden text-xs text-slate-300 lg:block">
-              {user.name} · {OFFICES.find(office => office.id === user.officeId)?.name ?? (user.role === 'ADMIN' ? 'Administrator' : 'Print team')}
+          <div className="ml-auto flex shrink-0 items-center gap-1 self-end">
+            <span className="mr-1 hidden max-w-44 truncate text-xs text-slate-300 2xl:block">
+              {user.name} · {OFFICES.find(office => office.id === user.officeId)?.name ?? (user.role === 'ADMIN' ? 'Administrator' : user.role === 'POLICE_PRINT' ? 'Police print operator' : user.role === 'BANDOBAST_OFFICER' ? 'Zone / sector officer' : 'Print team')}
             </span>
             {user.role === 'ADMIN' && (
               <button
                 type="button"
                 onClick={onOpenAuditLogs}
-                className="flex min-h-10 items-center gap-2 rounded-full px-2 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white sm:px-3"
+                className="flex min-h-9 items-center gap-1.5 operations-action px-2.5 text-xs font-medium text-slate-300 hover:bg-[#8B1A1A]/75 hover:text-white"
                 aria-label="Open audit logs"
               >
                 <History className="h-4 w-4" aria-hidden="true" />
-                <span className="hidden sm:inline">Audit logs</span>
-                <ArrowUpRight className="hidden h-3.5 w-3.5 sm:block" aria-hidden="true" />
+                <span>Audit logs</span>
               </button>
             )}
             <button
@@ -94,9 +96,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => {
                 signOut();
               }}
-              className="flex min-h-10 items-center gap-2 rounded-full px-3 text-xs text-slate-300 hover:bg-white/10 hover:text-white transition"
+              className="flex min-h-9 items-center gap-1.5 operations-action px-2.5 text-xs text-slate-300 hover:bg-[#8B1A1A]/75 hover:text-white"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" aria-hidden="true" />
               Sign out
             </button>
           </div>

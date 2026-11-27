@@ -6,7 +6,6 @@ import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
 import { ValidityPeriodSelector } from '../common/ValidityPeriodSelector';
 import { PillButton } from '../common/PillButton';
-import { SignaturePad } from '../badges/SignaturePad';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
 import {
   CreatePassInput,
@@ -15,10 +14,9 @@ import {
 } from '@/core/domain/entities/pass.entity';
 import {
   InstitutionType,
-  CategoryType,
   GovtIdType,
 } from '@/core/domain/types/pass-status.enum';
-import { X, UserPlus, Clock, AlertCircle, Camera } from 'lucide-react';
+import { X, UserPlus, Clock, Camera } from 'lucide-react';
 import { CameraCaptureModal } from '../common/CameraCaptureModal';
 
 interface PrintTeamSubmitModalProps {
@@ -64,7 +62,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   const [zoneC, setZoneC] = useState(false);
 
   const [photoUrl, setPhotoUrl] = useState<string>('');
-  const [cardholderSig, setCardholderSig] = useState<string>('');
+  const cardholderSig = '';
 
   useEffect(() => {
     if (isOpen) {

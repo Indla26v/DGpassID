@@ -38,11 +38,14 @@ try {
     assert.equal(data.summary.total, data.institutions.reduce((sum,r)=>sum+r.total,0));
     assert.equal(data.summary.total, data.trend.reduce((sum,r)=>sum+r.total,0));
     assert.equal(data.summary.total, data.statuses.reduce((sum,r)=>sum+r.total,0));
+    assert.equal(data.police.summary.total, data.police.zones.reduce((sum,r)=>sum+r.total,0));
+    assert.equal(data.police.summary.total, data.police.ranks.reduce((sum,r)=>sum+r.total,0));
+    assert.equal(data.police.summary.total, data.police.districts.reduce((sum,r)=>sum+r.total,0));
     assert.deepEqual(data.offices.map(r => r.id), ['chandragiri', 'renigunta', 'tirupati', 'district', 'unassigned']);
     for (const key of ['total', 'pending', 'ready', 'printed', 'issued', 'revoked']) {
       assert.equal(data.summary[key], data.offices.reduce((sum, row) => sum + row[key], 0));
     }
-    assert(!/full_name|mobile_number|govt_id_number|verification_token|photo_url|password_hash|postgresql:/.test(JSON.stringify(data)));
+    assert(!/full_name|mobile_number|govt_id_number|police_id_number|verification_token|photo_url|password_hash|postgresql:/.test(JSON.stringify(data)));
   }
   await assert.rejects(client.query('SELECT pass_analytics.snapshot($1,$2)', [0,"IISER' OR 1=1--"]), { code: '22023' });
   console.log('PASS: aggregate-only access for all 20 filter combinations; private tables, writes, DDL and privilege escalation denied even with read-only mode disabled.');

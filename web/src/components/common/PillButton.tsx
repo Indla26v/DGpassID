@@ -17,7 +17,7 @@ export const PillButton: React.FC<PillButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'rounded-full font-semibold transition-all duration-200 inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none shadow-sm whitespace-nowrap';
+    'rounded-full font-semibold transition-all duration-200 inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98] disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:shadow-none disabled:cursor-not-allowed disabled:pointer-events-none shadow-sm whitespace-nowrap';
 
   const sizeStyles = {
     sm: 'min-h-9 text-xs px-3.5 py-2',

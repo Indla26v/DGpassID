@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Conference Pass logo">
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="#0B2545"/>
+  <path d="M128 34 208 65v65c0 48-37 77-80 94-43-17-80-46-80-94V65Z" fill="#133E6D" stroke="#D4AF37" stroke-width="8" stroke-linejoin="round"/>
+  <rect x="73" y="75" width="110" height="119" rx="12" fill="#FFF"/>
+  <path d="M85 75h86a12 12 0 0 1 12 12v20H73V87a12 12 0 0 1 12-12Z" fill="#8B1A1A"/>
+  <rect x="110" y="86" width="36" height="7" rx="3.5" fill="#D4AF37"/>
+  <circle cx="101" cy="134" r="12" fill="#0B2545"/>
+  <path d="M83 166v-8a18 18 0 0 1 36 0v8Z" fill="#0B2545"/>
+  <path d="M134 125h30m-30 16h30m-30 16h20" stroke="#0B2545" stroke-width="7" stroke-linecap="round"/>
+  <path d="m131 177 8 8 16-18" fill="none" stroke="#8B1A1A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

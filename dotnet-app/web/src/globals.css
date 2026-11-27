@@ -16,18 +16,6 @@
   }
 }
 
-/* Holographic Anti-Counterfeit Sticker Simulation */
-.holo-foil {
-  background: linear-gradient(135deg,
-      rgba(255, 0, 128, 0.45) 0%,
-      rgba(0, 229, 255, 0.55) 25%,
-      rgba(255, 238, 0, 0.5) 50%,
-      rgba(124, 77, 255, 0.55) 75%,
-      rgba(0, 255, 163, 0.45) 100%);
-  backdrop-filter: blur(1px);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25), inset 0 0 6px rgba(255, 255, 255, 0.85);
-}
-
 /* Exact Physical Card Dimensions: 8cm (80mm) Width x 12cm (120mm) Height */
 .printable-card-size {
   width: 80mm;

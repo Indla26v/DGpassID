@@ -1,24 +1,25 @@
 'use client';
 
+import { OperationsHeader } from '../common/OperationsHeader';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { usePassCollection, useDebouncedValue } from '../common/usePassCollection';
 import { useAuth } from '@/auth/AuthProvider';
 import { managesAccounts, OFFICES } from '@/core/domain/offices';
-import { OfficeStatsCards } from './OfficeStatsCards';
+import { OfficeStatsTable } from './OfficeStatsTable';
 import { StatsCards } from '../common/StatsCards';
 import { PassTable } from './PassTable';
 import { PassCreateModal } from './PassCreateModal';
 import { PassEditModal } from './PassEditModal';
-import { BatchImportModal } from './BatchImportModal';
+import { BulkZoneAssignmentModal } from './BulkZoneAssignmentModal';
 import { AddDepartmentModal } from './AddDepartmentModal';
-import { AuthoritySignatureModal } from './AuthoritySignatureModal';
 import { SingleCardPrintModal } from '../print/SingleCardPrintModal';
 import { BatchPrintModal } from '../print/BatchPrintModal';
 import { PillButton } from '../common/PillButton';
 import { PassEntity } from '@/core/domain/entities/pass.entity';
 import { PassStatistics } from '@/core/interfaces/pass-repository.interface';
 import { PassStatus, InstitutionType, CategoryType } from '@/core/domain/types/pass-status.enum';
-import { Plus, Upload, Building2, Clock, PenTool, RefreshCw, ChevronRight } from 'lucide-react';
+import { Plus, Building2, Clock, RefreshCw } from 'lucide-react';
 
 export const AdminPortal: React.FC = () => {
   const { user } = useAuth();
@@ -37,16 +38,16 @@ export const AdminPortal: React.FC = () => {
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isBulkZoneOpen, setIsBulkZoneOpen] = useState(false);
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
-  const [isAuthoritySigOpen, setIsAuthoritySigOpen] = useState(false);
   const [isBatchPrintOpen, setIsBatchPrintOpen] = useState(false);
   const [editingPass, setEditingPass] = useState<PassEntity | null>(null);
-  const [previewingPass, setPreviewingPass] = useState<PassEntity | null>(null);
-  const [printingPass, setPrintingPass] = useState<PassEntity | null>(null);
+  const [printRequest, setPrintRequest] = useState<{ pass: PassEntity; autoPrint: boolean } | null>(null);
 
   const debouncedSearch = useDebouncedValue(search);
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({
+    pass_type: 'CAMPUS',
+  });
   if (officeFilter) params.set('office_id', officeFilter);
   if (debouncedSearch) params.set('search', debouncedSearch);
   if (statusFilter) params.set('status', statusFilter);
@@ -186,26 +187,26 @@ export const AdminPortal: React.FC = () => {
   };
 
   return (
-    <div className="portal-enter space-y-6">
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center gap-2 text-[11px] font-medium text-slate-500"><span>Conference workspace</span><ChevronRight className="h-3 w-3" /><span className="text-[#0B2545]">Administration</span></div>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8B1A1A]">Security control &amp; registry</p>
-            <h2 className="text-2xl font-semibold tracking-tight text-[#0B2545] sm:text-3xl">Security Administration</h2>
-            <p className="mt-2 text-sm text-slate-500">Manage duty passes, review submissions, and authorize campus access.</p>
-          </div>
-          <PillButton variant="crimson" onClick={() => setIsCreateOpen(true)} icon={<Plus className="h-4 w-4" />}>Issue New Duty Pass</PillButton>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <PillButton variant="outline" size="sm" onClick={() => setIsImportOpen(true)} icon={<Upload className="h-3.5 w-3.5" />}>Batch Import CSV</PillButton>
-            {managesAccounts(user) && <PillButton variant="outline" size="sm" onClick={() => setIsAddDeptOpen(true)} icon={<Building2 className="h-3.5 w-3.5" />}>Add Department / Role</PillButton>}
-            <PillButton variant="outline" size="sm" onClick={() => setIsAuthoritySigOpen(true)} icon={<PenTool className="h-3.5 w-3.5" />} title="Configure the issuing authority signature">Authority Signature</PillButton>
-          </div>
-          <button type="button" disabled={loading || statsLoading} onClick={() => { fetchPasses(); void fetchStats(); }} className="flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs font-medium text-slate-500 hover:text-[#0B2545] disabled:opacity-50"><RefreshCw className={`h-3.5 w-3.5 ${loading || statsLoading ? 'animate-spin' : ''}`} />Refresh data</button>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-4">
+      <OperationsHeader title="Campus & External Agencies" description="Manage duty ID cards for IISER, IIT, ICI, contractors and external agencies.">
+        {managesAccounts(user) && (
+          <PillButton variant="outline" size="sm" onClick={() => setIsAddDeptOpen(true)} icon={<Building2 aria-hidden="true" className="size-4" />}>
+            Add Department
+          </PillButton>
+        )}
+        <PillButton variant="crimson" size="sm" onClick={() => setIsCreateOpen(true)} icon={<Plus aria-hidden="true" className="size-4" />}>
+          Issue New Duty ID Card
+        </PillButton>
+        <PillButton
+          variant="outline"
+          size="sm"
+          disabled={loading || statsLoading}
+          onClick={() => { fetchPasses(); void fetchStats(); }}
+          icon={<RefreshCw aria-hidden="true" className={`size-3.5 ${loading || statsLoading ? 'motion-safe:animate-spin' : ''}`} />}
+        >
+          Refresh data
+        </PillButton>
+      </OperationsHeader>
 
       {actionError && <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">{actionError}<button type="button" onClick={() => setActionError(null)} className="font-semibold underline">Dismiss</button></div>}
 
@@ -240,7 +241,7 @@ export const AdminPortal: React.FC = () => {
       <StatsCards stats={stats} loading={statsLoading} error={statsError} activeStatus={statusFilter} onStatusChange={setStatusFilter} onRetry={() => void fetchStats()} />
 
       {stats?.offices?.length && !statsError ? (
-        <OfficeStatsCards offices={stats.offices} activeOffice={officeFilter}
+        <OfficeStatsTable offices={stats.offices} activeOffice={officeFilter}
           onOfficeChange={managesAccounts(user) ? setOfficeFilter : undefined} />
       ) : null}
       {officeFilter && (
@@ -273,24 +274,15 @@ export const AdminPortal: React.FC = () => {
         onInstitutionFilterChange={setInstitutionFilter}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
-        onPrint={(p) => setPrintingPass(p)}
+        onPrint={(pass) => setPrintRequest({ pass, autoPrint: true })}
         onBatchPrint={() => setIsBatchPrintOpen(true)}
+        onBulkAssignZones={() => setIsBulkZoneOpen(true)}
         onEdit={(p) => setEditingPass(p)}
-        onPreview={(p) => setPreviewingPass(p)}
+        onPreview={(pass) => setPrintRequest({ pass, autoPrint: false })}
         onQueueForPrint={handleQueueForPrint}
         onApprove={handleApprove}
         onRevoke={handleRevoke}
         onDelete={handleDelete}
-      />
-
-      {/* Authority Signature Configuration Modal */}
-      <AuthoritySignatureModal
-        isOpen={isAuthoritySigOpen}
-        onClose={() => setIsAuthoritySigOpen(false)}
-        onSaved={() => {
-          fetchPasses();
-          fetchStats();
-        }}
       />
 
       {/* Issue Pass Modal */}
@@ -301,6 +293,11 @@ export const AdminPortal: React.FC = () => {
           fetchPasses();
           fetchStats();
         }}
+        onPrint={(newPass) => {
+          fetchPasses();
+          fetchStats();
+          setPrintRequest({ pass: newPass, autoPrint: true });
+        }}
       />
 
       {/* Edit Pass Modal */}
@@ -308,17 +305,20 @@ export const AdminPortal: React.FC = () => {
         pass={editingPass}
         isOpen={Boolean(editingPass)}
         onClose={() => setEditingPass(null)}
-        onUpdated={() => {
+        onUpdated={(updated) => {
+          setPrintRequest((request) => request?.pass.id === updated.id ? { ...request, pass: updated } : request);
           fetchPasses();
           fetchStats();
         }}
       />
 
-      {/* Batch Import CSV Modal */}
-      <BatchImportModal
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
-        onImportComplete={() => {
+      {/* Bulk Security Zone Assignment Modal */}
+      <BulkZoneAssignmentModal
+        isOpen={isBulkZoneOpen}
+        onClose={() => setIsBulkZoneOpen(false)}
+        selectedIds={selectedIds}
+        onComplete={() => {
+          setSelectedIds([]);
           fetchPasses();
           fetchStats();
         }}
@@ -336,11 +336,14 @@ export const AdminPortal: React.FC = () => {
 
       {/* Admin Direct Single-Card Print Modal (Strictly 1 Page) */}
       <SingleCardPrintModal
-        pass={printingPass || previewingPass}
-        isOpen={Boolean(printingPass || previewingPass)}
-        onClose={() => {
-          setPrintingPass(null);
-          setPreviewingPass(null);
+        pass={printRequest?.pass ?? null}
+        isOpen={Boolean(printRequest) && !editingPass}
+        autoPrint={printRequest?.autoPrint}
+        previewOnly={!printRequest?.autoPrint}
+        onClose={() => setPrintRequest(null)}
+        onEdit={(pass) => {
+          setPrintRequest({ pass, autoPrint: false });
+          setEditingPass(pass);
         }}
         onPrintCompleted={() => {
           fetchPasses();

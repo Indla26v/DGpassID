@@ -1,4 +1,7 @@
-import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow, types } from 'pg';
+
+// Keep DATE columns (e.g. date_of_birth) as YYYY-MM-DD text instead of local-midnight Date objects.
+types.setTypeParser(types.builtins.DATE, (value: string) => value);
 
 let poolInstance: Pool | null = null;
 
@@ -14,12 +17,20 @@ export function resolveDatabaseUrl(): string {
 
 export function getDatabasePool(): Pool {
   if (!poolInstance) {
-    const connectionString = resolveDatabaseUrl();
-    const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const url = new URL(resolveDatabaseUrl());
+    // pg honors the last host query parameter ahead of the URL hostname.
+    const hostname = url.searchParams.getAll('host').at(-1) || url.hostname;
+    const isLoopback = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(hostname.toLowerCase());
+    if (!isLoopback) {
+      // URL options override Pool's ssl option. Enforce verification there too.
+      url.searchParams.delete('ssl');
+      url.searchParams.delete('uselibpqcompat');
+      url.searchParams.set('sslmode', 'verify-full');
+    }
 
     poolInstance = new Pool({
-      connectionString,
-      ssl: isLocalhost ? false : { rejectUnauthorized: false },
+      connectionString: url.href,
+      ssl: isLoopback ? false : { rejectUnauthorized: true },
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,

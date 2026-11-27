@@ -4,7 +4,7 @@ import { useDialog } from '../common/useDialog';
 import React, { useState } from 'react';
 import { PillButton } from '../common/PillButton';
 import { CreatePassInput } from '@/core/domain/entities/pass.entity';
-import { X, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
+import { X, Upload, FileSpreadsheet } from 'lucide-react';
 
 interface BatchImportModalProps {
   isOpen: boolean;

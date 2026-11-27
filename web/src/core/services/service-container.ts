@@ -3,6 +3,8 @@ import { PostgresPassRepository } from '@/infrastructure/repositories/postgres-p
 import { PostgresAuditRepository } from '@/infrastructure/repositories/postgres-audit.repository';
 import { PostgresDepartmentRepository } from '@/infrastructure/repositories/postgres-department.repository';
 import { PostgresConfigRepository } from '@/infrastructure/repositories/postgres-config.repository';
+import { CsvExportService } from './csv-export.service';
+import { PdfExportService } from './pdf-export.service';
 
 class ServiceContainer {
   private static instance: ServiceContainer;
@@ -12,6 +14,8 @@ class ServiceContainer {
   public readonly auditRepository = new PostgresAuditRepository();
   public readonly departmentRepository = new PostgresDepartmentRepository();
   public readonly configRepository = new PostgresConfigRepository();
+  public readonly csvExportService = new CsvExportService();
+  public readonly pdfExportService = new PdfExportService();
 
   public static getInstance(): ServiceContainer {
     if (!ServiceContainer.instance) {

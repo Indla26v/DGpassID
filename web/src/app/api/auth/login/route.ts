@@ -9,18 +9,25 @@ export async function POST(req: Request) {
   }
 
   try {
-    const body = await req.json();
-    let email = (body.email || '').toString().trim().toLowerCase();
-    const password = (body.password || '').toString();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid sign-in request.' }, { status: 400 });
+    }
+    const identifier = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
 
-    if (email === 'admin') email = 'admin@dgp.local';
-    if (email === 'print') email = 'print@dgp.local';
-
-    if (!email || !password || email.length > 254 || password.length > 128) {
+    if (!identifier || !password || identifier.length > 254 || password.length > 128) {
       return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
     }
+    let accountKey = identifier.includes('@') ? identifier : null;
+    if (identifier === 'admin' || identifier === 'print') {
+      accountKey = `${identifier}@dgp.local`;
+    } else if (/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}$/.test(identifier)) {
+      accountKey = await services.userRepository.resolveUsername(identifier);
+    }
 
-    const currentAttempts = await services.userRepository.checkLoginAttempts(email);
+    const attemptKey = accountKey ?? identifier;
+    const currentAttempts = await services.userRepository.checkLoginAttempts(attemptKey);
     if (currentAttempts > 10) {
       return NextResponse.json(
         { error: 'Too many attempts. Try again after 15 minutes.' },
@@ -31,20 +38,20 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = await services.userRepository.findByEmail(email);
+    const user = accountKey ? await services.userRepository.findByEmail(accountKey) : null;
     const isValid = user && user.password_hash && verifyPassword(password, user.password_hash);
 
     if (!user || !isValid || !user.is_active) {
-      await services.userRepository.recordLoginAttempt(email);
+      await services.userRepository.recordLoginAttempt(attemptKey);
       return NextResponse.json({ error: 'Email or password is incorrect.' }, { status: 401 });
     }
 
-    await services.userRepository.resetLoginAttempts(email);
+    await services.userRepository.resetLoginAttempts(attemptKey);
     await services.userRepository.deleteExpiredSessions();
 
     const token = generateToken();
     const hash = tokenHash(token);
-    await services.userRepository.createSession(hash, user.id, 8);
+    await services.userRepository.createSession(hash, user.id);
 
     await services.auditRepository.createLog({
       action: 'USER_SIGNED_IN',
@@ -62,6 +69,7 @@ export async function POST(req: Request) {
       name: user.name,
       role: user.role,
       officeId: user.officeId,
+      policePrintScope: user.policePrintScope,
       is_active: user.is_active,
     };
 

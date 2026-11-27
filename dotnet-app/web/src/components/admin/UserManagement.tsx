@@ -244,6 +244,3 @@ export const UserManagement: React.FC = () => {
     </section>
   );
 };
-
-export default UserManagement;
-

@@ -1,5 +1,6 @@
-import { IConfigRepository, AuthoritySignatureConfig } from '@/core/interfaces/config-repository.interface';
+import { IConfigRepository, AuthoritySignatureConfig, SignaturePreset } from '@/core/interfaces/config-repository.interface';
 import type { SessionUser } from '@/core/domain/entities/user.entity';
+import type { OfficeId } from '@/core/domain/offices';
 import { query, withTransaction } from '../db/pool';
 import { PoolClient } from 'pg';
 
@@ -7,9 +8,9 @@ export class PostgresConfigRepository implements IConfigRepository {
   async removeAuthoritySignature(actor: SessionUser): Promise<void> {
     await withTransaction(async (client) => {
       if (actor.officeId) {
-        await client.query('UPDATE pass_offices SET signature_url = NULL WHERE id = $1', [actor.officeId]);
+        await client.query('UPDATE pass_offices SET signature_url = NULL, signature_preset = NULL WHERE id = $1', [actor.officeId]);
       } else {
-        await client.query("DELETE FROM conference_configs WHERE key = 'authority_signature_url'");
+        await client.query("DELETE FROM conference_configs WHERE key IN ('authority_signature_url', 'authority_signature_preset')");
       }
       await client.query(
         "INSERT INTO audit_logs (action, performed_by, user_role, details, office_id) VALUES ('AUTHORITY_SIGNATURE_REMOVED', $1, $2, 'Removed the saved authority signature for future approvals.', $3)",
@@ -36,51 +37,68 @@ export class PostgresConfigRepository implements IConfigRepository {
     );
   }
 
-  async getAuthoritySignature(actor: SessionUser): Promise<AuthoritySignatureConfig> {
-    if (actor.officeId) {
-      const { rows: [office] } = await query(
-        'SELECT signature_url, authority_name, authority_title, name FROM pass_offices WHERE id = $1',
-        [actor.officeId]
-      );
-      return {
-        signatureUrl: office.signature_url,
-        name: office.authority_name ?? actor.name,
-        title: office.authority_title ?? office.name,
-      };
-    }
-    const res = await query<{ key: string; value: string }>(
-      'SELECT key, value FROM conference_configs'
-    );
-    const map = new Map<string, string>();
-    for (const row of res.rows) {
-      map.set(row.key, row.value);
-    }
-
+  async getAuthoritySignature(officeId: OfficeId | null, includePreset = false): Promise<AuthoritySignatureConfig> {
+    const presetColumn = includePreset ? `, CASE WHEN $1::text IS NULL THEN
+      (SELECT value::jsonb FROM conference_configs WHERE key = 'authority_signature_preset')
+      ELSE (SELECT signature_preset FROM pass_offices WHERE id = $1) END AS preset` : '';
+    const { rows: [config] } = await query<{
+      signature_url: string | null; authority_name: string | null; authority_title: string | null;
+      preset?: SignaturePreset | null;
+    }>(`SELECT c.*${presetColumn} FROM pass_authority_config($1) c`, [officeId]);
     return {
-      signatureUrl: map.get('authority_signature_url') || null,
-      name: map.get('issuing_authority_name') || 'R. Rao / SP',
-      title: map.get('issuing_authority_title') || 'SP / Security Nodal Officer, Tirupati',
+      signatureUrl: config?.signature_url ?? null,
+      name: config?.authority_name ?? '',
+      title: config?.authority_title ?? '',
+      ...(includePreset ? { preset: config?.preset ?? null } : {}),
     };
   }
 
   async saveAuthoritySignature(
-    signatureUrl: string,
+    signatureUrl: string | null,
     name: string,
     title: string,
-    actor: SessionUser
-  ): Promise<void> {
-    await withTransaction(async (client) => {
+    actor: SessionUser,
+    applyToUnprinted = false,
+    preset?: SignaturePreset
+  ): Promise<number> {
+    return withTransaction(async (client) => {
       if (actor.officeId) {
-        await client.query('UPDATE pass_offices SET signature_url = $1, authority_name = $2, authority_title = $3 WHERE id = $4', [signatureUrl, name, title, actor.officeId]);
+        await client.query(
+          `UPDATE pass_offices
+           SET signature_url = COALESCE($1, signature_url), authority_name = $2, authority_title = $3,
+               signature_preset = CASE WHEN $1::text IS NULL THEN signature_preset ELSE $5::jsonb END
+           WHERE id = $4`,
+          [signatureUrl, name, title, actor.officeId, preset ? JSON.stringify(preset) : null]
+        );
       } else {
-        await this.setConfig('authority_signature_url', signatureUrl, 'Official digital signature', client);
+        if (signatureUrl) {
+          await this.setConfig('authority_signature_url', signatureUrl, 'Official digital signature', client);
+          if (preset) {
+            await this.setConfig('authority_signature_preset', JSON.stringify(preset), 'Signature source and adjustments', client);
+          } else {
+            await client.query("DELETE FROM conference_configs WHERE key = 'authority_signature_preset'");
+          }
+        }
         await this.setConfig('issuing_authority_name', name, 'Name of the authority', client);
         await this.setConfig('issuing_authority_title', title, 'Title of the authority', client);
       }
+      let updatedCount = 0;
+      if (applyToUnprinted) {
+        const result = await client.query<{ updated_count: number }>(
+          'SELECT apply_saved_authority_signature_to_unprinted($1) AS updated_count',
+          [actor.officeId]
+        );
+        updatedCount = result.rows[0].updated_count;
+      }
+      const details = applyToUnprinted
+        ? `Authority signature saved and applied to ${updatedCount} unprinted pass(es).`
+        : 'Signature updated for future passes.';
       await client.query(
-        "INSERT INTO audit_logs (action, performed_by, user_role, details, office_id) VALUES ('AUTHORITY_SIGNATURE_UPDATED', $1, $2, 'Signature updated for future passes.', $3)",
-        [actor.email, actor.role, actor.officeId]
+        'INSERT INTO audit_logs (action, performed_by, user_role, details, office_id) VALUES ($1, $2, $3, $4, $5)',
+        [applyToUnprinted ? 'AUTHORITY_SIGNATURE_APPLIED' : 'AUTHORITY_SIGNATURE_UPDATED',
+          actor.email, actor.role, details, actor.officeId]
       );
+      return updatedCount;
     });
   }
 }

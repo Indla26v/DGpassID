@@ -1,3 +1,11 @@
+export type PassType = 'CAMPUS' | 'POLICE_FORCE';
+
+export type PoliceDistributionStatus =
+  | 'PENDING_ASSIGNMENT'
+  | 'ASSIGNED'
+  | 'PRINTED'
+  | 'COLLECTED';
+
 export type PassStatus =
   | 'DRAFT'
   | 'PENDING_APPROVAL'
@@ -19,4 +27,4 @@ export type GovtIdType =
   | 'Driving License'
   | 'Passport';
 
-export type UserRole = 'ADMIN' | 'PRINT_TEAM' | 'SECURITY_GATE';
+export type UserRole = 'ADMIN' | 'PRINT_TEAM' | 'POLICE_PRINT' | 'BANDOBAST_OFFICER' | 'SECURITY_GATE';

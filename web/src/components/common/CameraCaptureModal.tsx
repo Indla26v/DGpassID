@@ -1,9 +1,11 @@
 'use client';
 
+import '@/lib/client-safe-json';
 import { useDialog } from './useDialog';
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { PillButton } from './PillButton';
-import { Camera, RotateCcw, CheckCircle, X, AlertCircle } from 'lucide-react';
+import { Camera, RotateCcw, CheckCircle, X, AlertCircle, Upload } from 'lucide-react';
 
 interface CameraCaptureModalProps {
   isOpen: boolean;
@@ -17,7 +19,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   onPhotoCaptured,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const dialogRef = useDialog(isOpen, onClose);
@@ -48,29 +50,52 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
       setIsReady(false);
       setCapturedImage(null);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-        audio: false,
-      });
+      let stream: MediaStream;
+      try {
+        // Try user-facing webcam
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user',
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        });
+      } catch {
+        // Fallback to any available video input device
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch(console.error);
+      const video = videoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('autoplay', 'true');
+        video.muted = true;
+
+        video.onloadeddata = () => {
           setIsReady(true);
         };
+
+        try {
+          await video.play();
+          setIsReady(true);
+        } catch {
+          // If auto-play blocked, onloadeddata will set ready
+        }
       }
     } catch (err: any) {
       console.error('Camera access error:', err);
       setCameraError(
         err.name === 'NotAllowedError'
-          ? 'Camera permission denied. Please enable camera access in your browser.'
-          : `Camera error: ${err.message || 'No camera device found.'}`
+          ? 'Camera permission denied. Please allow camera access in your browser settings.'
+          : err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError'
+          ? 'No webcam detected on this workstation. You can upload an image file instead.'
+          : `Camera unavailable: ${err.message || 'No video device found'}. You can upload a photo below.`
       );
     }
   };
@@ -87,23 +112,27 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
 
   const handleCapture = () => {
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!video) return;
 
     const width = video.videoWidth || 640;
     const height = video.videoHeight || 480;
 
     // Standard portrait ratio (3:4 or 4:5) for ID card passport photo
-    // Crop center square/portrait
     const cropWidth = Math.min(width, Math.round(height * 0.8));
     const cropHeight = Math.round(cropWidth * 1.25);
     const startX = Math.max(0, (width - cropWidth) / 2);
     const startY = Math.max(0, (height - cropHeight) / 2);
 
+    // Offscreen in-memory canvas (not mounted in DOM, preventing circular FiberNode serialization errors)
+    const canvas = document.createElement('canvas');
     canvas.width = 300;
     canvas.height = 375;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Mirror horizontally so capture matches mirror preview
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
 
     ctx.drawImage(
       video,
@@ -122,6 +151,23 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
     stopCamera();
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setCapturedImage(result);
+        stopCamera();
+      }
+    };
+    reader.readAsDataURL(file);
+    // Reset file input value to allow re-uploading the same file
+    e.target.value = '';
+  };
+
   const handleRetake = () => {
     setCapturedImage(null);
     startCamera();
@@ -135,10 +181,18 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   };
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Capture cardholder photo" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col">
+  return createPortal(
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Capture cardholder photo"
+      tabIndex={-1}
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto"
+    >
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col animate-scaleUp">
         {/* Header */}
         <div className="px-5 py-4 bg-[#0B2545] text-white flex items-center justify-between border-b border-[#8B1A1A]">
           <div className="flex items-center gap-2">
@@ -167,15 +221,25 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         {/* Viewport Area */}
         <div className="p-5 flex flex-col items-center space-y-4">
           {cameraError ? (
-            <div className="w-full p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col items-center text-center gap-2">
+            <div className="w-full p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col items-center text-center gap-2.5">
               <AlertCircle className="w-6 h-6 text-rose-600" />
               <span className="font-bold">{cameraError}</span>
               <p className="text-[11px] text-rose-700">
-                You can alternatively upload a photo directly using the Browse File button.
+                You can select an existing photo file from this workstation.
               </p>
-              <PillButton variant="secondary" size="sm" onClick={startCamera}>
-                Retry Camera
-              </PillButton>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <PillButton
+                  variant="crimson"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  icon={<Upload className="w-3.5 h-3.5" />}
+                >
+                  Upload Photo File
+                </PillButton>
+                <PillButton variant="secondary" size="sm" onClick={startCamera}>
+                  Retry Camera
+                </PillButton>
+              </div>
             </div>
           ) : capturedImage ? (
             /* Review Captured Photo */
@@ -187,11 +251,11 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
                   className="w-full h-full object-cover"
                 />
                 <span className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-extrabold uppercase tracking-wider shadow-xs">
-                  Captured OK
+                  Photo Ready
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
-                Photo formatted for 9cm × 12cm Duty Access Pass
+                Calibrated for 8cm × 12cm Duty Access Pass
               </p>
             </div>
           ) : (
@@ -199,6 +263,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             <div className="relative w-full max-w-[320px] aspect-[3/4] rounded-2xl overflow-hidden bg-slate-900 border-2 border-slate-300 shadow-inner flex items-center justify-center">
               <video
                 ref={videoRef}
+                autoPlay
                 playsInline
                 muted
                 className="w-full h-full object-cover transform scale-x-[-1]"
@@ -221,12 +286,18 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
             </div>
           )}
 
-          {/* Hidden Canvas for capture processing */}
-          <canvas ref={canvasRef} className="hidden" />
+          {/* Hidden File Input for fallback upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
         </div>
 
         {/* Action Controls */}
-        <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
           <PillButton variant="secondary" onClick={onClose}>
             Cancel
           </PillButton>
@@ -249,17 +320,27 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
               </PillButton>
             </div>
           ) : (
-            <PillButton
-              variant="crimson"
-              onClick={handleCapture}
-              disabled={!isReady || Boolean(cameraError)}
-              icon={<Camera className="w-4 h-4" />}
-            >
-              Take Photo
-            </PillButton>
+            <div className="flex items-center gap-2">
+              <PillButton
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                icon={<Upload className="w-3.5 h-3.5" />}
+              >
+                Upload File
+              </PillButton>
+              <PillButton
+                variant="crimson"
+                onClick={handleCapture}
+                disabled={!isReady || Boolean(cameraError)}
+                icon={<Camera className="w-4 h-4" />}
+              >
+                Take Photo
+              </PillButton>
+            </div>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

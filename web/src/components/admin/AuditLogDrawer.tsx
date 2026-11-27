@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { AuditLogEntity } from '@/core/domain/entities/audit.entity';
 import { PillButton } from '../common/PillButton';
 import { CollectionFeedback } from '../common/CollectionFeedback';
-import { X, History, RefreshCw, Shield, Printer, CheckCircle } from 'lucide-react';
+import { X, History, RefreshCw } from 'lucide-react';
 
 interface AuditLogDrawerProps {
   isOpen: boolean;

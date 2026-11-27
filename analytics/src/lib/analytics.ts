@@ -20,7 +20,7 @@ async function querySnapshot(days: number, institution: string): Promise<Analyti
   const { rows } = await getPool().query('SELECT pass_analytics.snapshot($1::int, $2::text) AS data', [days, institution]);
   return rows[0].data as Analytics;
 }
-const cachedSnapshot = unstable_cache(querySnapshot, ['analytics-aggregate-v3'], { revalidate: 30 });
+const cachedSnapshot = unstable_cache(querySnapshot, ['analytics-aggregate-v4'], { revalidate: 30 });
 const inFlight = new Map<string, Promise<Analytics>>();
 export async function getAnalytics(days: number, institution: string): Promise<Analytics> {
   const key = `${days}:${institution}`;

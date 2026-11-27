@@ -4,7 +4,7 @@ import { useDialog } from '../common/useDialog';
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../common/Toast';
 import { InstitutionSelector } from '../common/InstitutionSelector';
-import { ValidityPeriodSelector } from '../common/ValidityPeriodSelector';
+import { useBadgeAuthority } from '../common/useBadgeAuthority';
 import { PillButton } from '../common/PillButton';
 import { SignaturePad } from '../badges/SignaturePad';
 import { PrintableDutyCard } from '../badges/PrintableDutyCard';
@@ -15,10 +15,9 @@ import {
 } from '@/core/domain/entities/pass.entity';
 import {
   InstitutionType,
-  CategoryType,
   GovtIdType,
 } from '@/core/domain/types/pass-status.enum';
-import { X, UserPlus, Clock, AlertCircle, Camera } from 'lucide-react';
+import { X, UserPlus, Clock, Camera } from 'lucide-react';
 import { CameraCaptureModal } from '../common/CameraCaptureModal';
 
 interface PrintTeamSubmitModalProps {
@@ -27,7 +26,11 @@ interface PrintTeamSubmitModalProps {
   onSubmitted: (pass: PassEntity) => void;
 }
 
-export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
+export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = (props) => (
+  props.isOpen ? <PrintTeamSubmitModalContent {...props} /> : null
+);
+
+const PrintTeamSubmitModalContent: React.FC<PrintTeamSubmitModalProps> = ({
   isOpen,
   onClose,
   onSubmitted,
@@ -43,28 +46,27 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   const [internalStaffRoles, setInternalStaffRoles] = useState<string[]>([]);
 
   // Classification Mode
-  const [personnelType, setPersonnelType] = useState<PersonnelType>('EXTERNAL');
+  const [personnelType, setPersonnelType] = useState<PersonnelType | ''>('');
 
   // Form State
   const [fullName, setFullName] = useState('');
   const [fatherName, setFatherName] = useState('');
-  const [selectedExternalDept, setSelectedExternalDept] = useState('Police department');
-  const [internalInstitution, setInternalInstitution] = useState<InstitutionType>('IISER');
-  const [selectedStaffRole, setSelectedStaffRole] = useState('Faculty Members');
+  const [selectedExternalDept, setSelectedExternalDept] = useState('');
+  const [internalInstitution, setInternalInstitution] = useState<InstitutionType | ''>('');
+  const [selectedStaffRole, setSelectedStaffRole] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [govtIdType, setGovtIdType] = useState<GovtIdType>('Aadhaar');
   const [govtIdNumber, setGovtIdNumber] = useState('');
-  const [validFrom, setValidFrom] = useState('2026-11-27');
-  const [validTo, setValidTo] = useState('2026-11-30');
   const [operatorName, setOperatorName] = useState('Print Station Operator');
-  const [authoritySigUrl, setAuthoritySigUrl] = useState<string | null>(null);
+  const authority = useBadgeAuthority(isOpen, null);
 
-  const [zoneA, setZoneA] = useState(true);
-  const [zoneB, setZoneB] = useState(true);
+  const [zoneA, setZoneA] = useState(false);
+  const [zoneB, setZoneB] = useState(false);
   const [zoneC, setZoneC] = useState(false);
 
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [cardholderSig, setCardholderSig] = useState<string>('');
+  const [signatureUploading, setSignatureUploading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,17 +75,9 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
         .then((data) => {
           setExternalDepartments(data.externalDepartments || []);
           setInternalStaffRoles(data.internalStaffRoles || []);
-          if (data.externalDepartments?.length > 0) setSelectedExternalDept(data.externalDepartments[0]);
-          if (data.internalStaffRoles?.length > 0) setSelectedStaffRole(data.internalStaffRoles[0]);
         })
         .catch((err) => console.error(err));
 
-      fetch('/api/config/authority-signature')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.signatureUrl) setAuthoritySigUrl(data.signatureUrl);
-        })
-        .catch((err) => console.warn('Could not load authority signature:', err));
     }
   }, [isOpen]);
 
@@ -92,10 +86,9 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   const computedDepartment =
     personnelType === 'EXTERNAL'
       ? selectedExternalDept
-      : `${internalInstitution} - ${selectedStaffRole}`;
+      : personnelType === 'INTERNAL' && internalInstitution && selectedStaffRole ? `${internalInstitution} - ${selectedStaffRole}` : '';
 
-  const computedInstitution: InstitutionType =
-    internalInstitution;
+  const computedInstitution = internalInstitution;
 
   const computedCategory =
     personnelType === 'EXTERNAL' ? 'External Agency' : selectedStaffRole;
@@ -111,31 +104,34 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   };
 
   const previewPass: Partial<PassEntity> = {
+    ...authority,
     pass_number: 'DGPCONF-2026-PENDING',
     full_name: fullName || 'Cardholder Name',
     father_or_spouse_name: fatherName,
-    personnel_type: personnelType,
-    institution: computedInstitution,
+    personnel_type: personnelType || undefined,
+    institution: computedInstitution || undefined,
     category: computedCategory,
     department: computedDepartment,
     mobile_number: mobileNumber,
     govt_id_type: govtIdType,
     govt_id_number: govtIdNumber,
-    valid_from: validFrom,
-    valid_to: validTo,
-    zone_a: zoneA,
-    zone_b: zoneB,
-    zone_c: zoneC,
+    zone_a: Boolean(computedInstitution && zoneA),
+    zone_b: Boolean(computedInstitution && zoneB),
+    zone_c: Boolean(computedInstitution && zoneC),
     photo_url: photoUrl,
     cardholder_signature_url: cardholderSig,
-    authority_signature_url: authoritySigUrl || undefined,
     verification_token: 'PV-2026-SUBMISSION',
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (signatureUploading || loading) return;
     setError(null);
 
+    if (!personnelType || !computedInstitution || !computedDepartment) {
+      setError(!personnelType ? 'Select a personnel category.' : !computedInstitution ? 'Select an institution.' : 'Select a department or staff role.');
+      return;
+    }
     if (!fullName.trim()) {
       setError('Cardholder Full Name is required.');
       return;
@@ -180,8 +176,6 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
         mobile_number: mobileNumber.trim(),
         govt_id_type: govtIdType,
         govt_id_number: govtIdNumber.trim(),
-        valid_from: validFrom,
-        valid_to: validTo,
         zone_a: zoneA,
         zone_b: zoneB,
         zone_c: zoneC,
@@ -208,6 +202,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
       }
 
       const pass = await res.json();
+      setCardholderSig('');
       onSubmitted(pass);
       onClose();
     } catch (err: any) {
@@ -270,6 +265,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
+                  aria-pressed={personnelType === 'EXTERNAL'}
                   onClick={() => setPersonnelType('EXTERNAL')}
                   className={`py-2 px-3 rounded-full text-xs font-bold border transition ${
                     personnelType === 'EXTERNAL'
@@ -281,6 +277,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                 </button>
                 <button
                   type="button"
+                  aria-pressed={personnelType === 'INTERNAL'}
                   onClick={() => setPersonnelType('INTERNAL')}
                   className={`py-2 px-3 rounded-full text-xs font-bold border transition ${
                     personnelType === 'INTERNAL'
@@ -296,7 +293,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
             <InstitutionSelector value={internalInstitution} onChange={setInternalInstitution} />
 
               {/* Department / Category Selection */}
-            {personnelType === 'EXTERNAL' ? (
+            {personnelType === 'EXTERNAL' && (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   External Department
@@ -306,6 +303,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                   onChange={(e) => setSelectedExternalDept(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white"
                 >
+                  <option value="" disabled>Select a department</option>
                   {externalDepartments.map((dept) => (
                     <option key={dept} value={dept}>
                       {dept}
@@ -313,7 +311,8 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                   ))}
                 </select>
               </div>
-            ) : (
+            )}
+            {personnelType === 'INTERNAL' && (
               <div className="space-y-3">
                 
 
@@ -326,6 +325,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
                     onChange={(e) => setSelectedStaffRole(e.target.value)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white"
                   >
+                      <option value="" disabled>Select a staff role</option>
                     {internalStaffRoles.map((role) => (
                       <option key={role} value={role}>
                         {role}
@@ -409,13 +409,6 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
               </div>
             </div>
 
-            {/* Pass Validity Options */}
-            <ValidityPeriodSelector
-              validFrom={validFrom}
-              validTo={validTo}
-              onChangeValidFrom={setValidFrom}
-              onChangeValidTo={setValidTo}
-            />
 
             {/* Access Zones */}
             <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
@@ -498,12 +491,21 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
               </div>
             </div>
 
+            <SignaturePad
+              label="Cardholder Signature"
+              initialSignature={cardholderSig}
+              onSignatureChange={setCardholderSig}
+              allowSample={false}
+              disabled={loading}
+              onUploadPendingChange={setSignatureUploading}
+            />
+
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
               <PillButton variant="secondary" onClick={onClose} type="button">
                 Cancel
               </PillButton>
-              <PillButton variant="crimson" type="submit" disabled={loading}>
+              <PillButton variant="crimson" type="submit" disabled={loading || signatureUploading}>
                 {loading ? 'Submitting...' : 'Submit for Admin Approval'}
               </PillButton>
             </div>

@@ -6,6 +6,7 @@ export async function GET(req: Request) {
   const auth = await authorizeRequest(req, ['ADMIN', 'PRINT_TEAM']);
   if (auth.errorResponse) return auth.errorResponse;
 
-  const stats = await services.passRepository.getStatistics(auth.user);
+  const includeRegistryTotal = new URL(req.url).searchParams.get('include_registry_total') === '1';
+  const stats = await services.passRepository.getStatistics(auth.user, includeRegistryTotal);
   return NextResponse.json(stats);
 }
