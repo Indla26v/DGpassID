@@ -40,7 +40,7 @@ export class PdfExportService implements IPdfExportService {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    const title = options.title || '61st ALL INDIA DGsP / IGPs CONFERENCE – 2026';
+    const title = options.title || '61st ALL INDIA DGPs / IGPs CONFERENCE – 2026';
     const subtitle = options.subtitle || 'OFFICIAL DUTY ACCESS PASS LIST · IISER TIRUPATI';
 
     const now = new Date();

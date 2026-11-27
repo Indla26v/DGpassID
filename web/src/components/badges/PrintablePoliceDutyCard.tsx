@@ -74,7 +74,7 @@ export const PrintablePoliceDutyCard: React.FC<PrintablePoliceDutyCardProps> = (
         <HeaderLogo type="police" size={38} className={logoClass} />
         <div className="min-w-0">
           <h2 className="text-[14px] font-black leading-[1.04]">
-            61<sup className="text-[0.65em]">st</sup> ALL INDIA DGSP / IGPS<br />
+            61<sup className="text-[0.65em]">st</sup> ALL INDIA DGPS / IGPS<br />
             CONFERENCE – 2026
           </h2>
           <p className="mt-1 text-[9.5px] font-bold leading-tight">Tirupati, Andhra Pradesh</p>

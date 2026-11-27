@@ -53,7 +53,7 @@ export const Login: React.FC<LoginProps> = ({ onSignedIn }) => {
               Under your control.
             </h1>
             <p className="mt-5 text-sm leading-6 text-slate-300">
-              61st All India DGsP / IGPs Conference · 2026<br />
+              61st All India DGPs / IGPs Conference · 2026<br />
               IISER Tirupati
             </p>
           </div>

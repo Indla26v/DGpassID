@@ -80,7 +80,7 @@ const sampleData = [
 // 2. Instructions Sheet Rows
 const instructionRows = [
   ['POLICE PERSONNEL DUTY PASS PROFORMA - INSTRUCTIONS & REFERENCE'],
-  ['61st All India DGsP / IGPs Conference 2026 - IISER Campus, Tirupati'],
+  ['61st All India DGPs / IGPs Conference 2026 - IISER Campus, Tirupati'],
   [''],
   ['1. IMPORTANT DATA INSTRUCTIONS'],
   ['Field', 'Specification / Rule'],

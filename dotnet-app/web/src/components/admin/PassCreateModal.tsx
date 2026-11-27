@@ -75,7 +75,7 @@ export const PassCreateModal: React.FC<PassCreateModalProps> = ({
   const [gateZoneC, setGateZoneC] = useState('IISER Gate-3 (Utility/Service)');
 
   const [validFrom, setValidFrom] = useState('2026-11-27');
-  const [validTo, setValidTo] = useState('2026-11-30');
+  const [validTo, setValidTo] = useState('2026-12-02');
 
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [cardholderSig, setCardholderSig] = useState<string>('');

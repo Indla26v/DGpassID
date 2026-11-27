@@ -5,9 +5,9 @@ import '@/lib/client-safe-json';
 import { ClientSafeJsonProvider } from '@/components/common/ClientSafeJsonProvider';
 
 export const metadata: Metadata = {
-  title: '61st All India DGsP / IGPs Conference 2026 – Pass Management',
+  title: '61st All India DGPs / IGPs Conference 2026 – Pass Management',
   description:
-    'Duty Access Card Registry and ID Print Station for 61st All India DGsP / IGPs Conference – IISER Campus, Tirupati.',
+    'Duty Access Card Registry and ID Print Station for 61st All India DGPs / IGPs Conference – IISER Campus, Tirupati.',
   icons: {
     icon: '/app-logo.png',
   },

@@ -69,7 +69,7 @@ const PrintTeamEditModalContent: React.FC<Omit<PrintTeamEditModalProps, 'pass'> 
   );
   const [govtIdNumber, setGovtIdNumber] = useState(pass.govt_id_number || '');
   const [validFrom, setValidFrom] = useState(toIsoDate(pass.valid_from, '2026-11-27'));
-  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-11-30'));
+  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-12-02'));
   const operatorName = 'Print Station Operator';
 
   const [zoneA, setZoneA] = useState(pass.zone_a ?? true);

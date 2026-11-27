@@ -54,7 +54,7 @@ const PassEditModalContent: React.FC<Omit<PassEditModalProps, 'pass'> & { pass: 
   const [govtIdType, setGovtIdType] = useState<GovtIdType>(pass.govt_id_type);
   const [govtIdNumber, setGovtIdNumber] = useState(pass.govt_id_number);
   const [validFrom, setValidFrom] = useState(toIsoDate(pass.valid_from, '2026-11-27'));
-  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-11-30'));
+  const [validTo, setValidTo] = useState(toIsoDate(pass.valid_to, '2026-12-02'));
   const [status, setStatus] = useState<PassStatus>(pass.status);
 
   const [zoneA, setZoneA] = useState(pass.zone_a);

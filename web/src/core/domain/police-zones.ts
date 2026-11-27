@@ -1,6 +1,6 @@
 /**
  * Official Bandobusth Scheme Taxonomy & Domain Helpers
- * 61st All India DGsP / IGPs Conference - 2026
+ * 61st All India DGPs / IGPs Conference - 2026
  * Tirupati District Police, Andhra Pradesh
  */
 

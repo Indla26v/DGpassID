@@ -1,7 +1,7 @@
-# 61st All India DGsP / IGPs Conference – 2026
+# 61st All India DGPs / IGPs Conference – 2026
 ## Pass Management & Verification System Workspace
 
-This workspace contains the official suite of applications for the 61st All India DGsP / IGPs Conference held at IISER Tirupati:
+This workspace contains the official suite of applications for the 61st All India DGPs / IGPs Conference held at IISER Tirupati:
 
 ### Directory Structure
 

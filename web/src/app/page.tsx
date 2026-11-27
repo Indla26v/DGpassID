@@ -67,7 +67,7 @@ function MainWorkspace() {
       <footer className="no-print bg-[#061527] text-slate-400 border-t border-slate-800 py-4 px-6 text-center text-xs mt-auto">
         <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-3">
           <ConnectionStatus />
-          <div>61st All India DGsP / IGPs Conference · 2026</div>
+          <div>61st All India DGPs / IGPs Conference · 2026</div>
           <div className="text-slate-400">Official Andhra Pradesh Police Pass Protocol</div>
         </div>
       </footer>

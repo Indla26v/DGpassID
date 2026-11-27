@@ -43,7 +43,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               Andhra Pradesh Police · IISER Tirupati
             </p>
             <h1 className="text-sm font-semibold tracking-tight sm:text-lg">
-              61st All India DGsP / IGPs Conference <span className="text-slate-300">2026</span>
+              61st All India DGPs / IGPs Conference <span className="text-slate-300">2026</span>
             </h1>
           </div>
         </div>

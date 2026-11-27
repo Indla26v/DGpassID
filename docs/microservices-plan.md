@@ -1,4 +1,4 @@
-# Microservices plan — DGsP/IGsP Conference 2026 pass & bandobast platform
+# Microservices plan — DGPs/IGPs Conference 2026 pass & bandobast platform
 
 Status: proposal. Nothing here is deployed. The features in this release were built inside the existing
 Next.js app (`web/`) but as service-shaped modules, so they can be lifted out one at a time.

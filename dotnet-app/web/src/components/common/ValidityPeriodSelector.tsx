@@ -31,7 +31,7 @@ export const ValidityPeriodSelector: React.FC<ValidityPeriodSelectorProps> = ({
   className = '',
 }) => {
   const normalizedFrom = toIsoDate(validFrom, '2026-11-27');
-  const normalizedTo = toIsoDate(validTo, '2026-11-30');
+  const normalizedTo = toIsoDate(validTo, '2026-12-02');
 
   return (
     <div className={`space-y-2 border-t border-slate-200 pt-3 ${className}`}>

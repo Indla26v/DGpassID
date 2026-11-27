@@ -20,7 +20,7 @@ export interface SheetOfficer {
 }
 
 export const SECTOR_WISE_COLUMNS = ['S. No.', 'Rank', 'G.No.', 'Name', 'Place of working', 'Mobile No.', 'District'] as const;
-export const SECTOR_WISE_TITLE = '61st ALL INDIA DGsP / IGsP CONFERENCE-2026, TIRUPATI.';
+export const SECTOR_WISE_TITLE = '61st ALL INDIA DGPs / IGPs CONFERENCE-2026, TIRUPATI.';
 export const SECTOR_WISE_SUBTITLE = 'SECTOR WISE FORCE DEPLOYMENT';
 export const NOT_ALLOTTED = 'Not allotted to a zone';
 

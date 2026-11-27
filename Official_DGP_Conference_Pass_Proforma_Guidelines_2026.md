@@ -1,6 +1,6 @@
 # Police Personnel Duty Pass Registration Proforma – Instructions
 
-Please fill out the spreadsheet according to the column instructions below. This proforma is strictly for police personnel, officers, and staff deployed for the 61st All India DGsP / IGPs Conference 2026. Do not alter or delete column headers.
+Please fill out the spreadsheet according to the column instructions below. This proforma is strictly for police personnel, officers, and staff deployed for the 61st All India DGPs / IGPs Conference 2026. Do not alter or delete column headers.
 
 ---
 

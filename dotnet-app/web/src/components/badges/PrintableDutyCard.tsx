@@ -109,7 +109,7 @@ export const PrintableDutyCard: React.FC<PrintableDutyCardProps> = ({
 
           <div className="text-center flex-1 min-w-0 px-0.5">
             <h2 className="text-[12px] font-black tracking-tight uppercase leading-[1.12] text-white">
-              61<sup className="text-[0.65em] normal-case font-extrabold">st</sup> ALL INDIA DGsP / IGPs CONFERENCE – 2026
+              61<sup className="text-[0.65em] normal-case font-extrabold">st</sup> ALL INDIA DGPs / IGPs CONFERENCE – 2026
             </h2>
             <p className="text-[8.5px] font-bold text-slate-200 leading-tight mt-[1px]">
               IISER, Tirupati, Andhra Pradesh

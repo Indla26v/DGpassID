@@ -53,7 +53,7 @@ export const PrintTeamSubmitModal: React.FC<PrintTeamSubmitModalProps> = ({
   const [govtIdType, setGovtIdType] = useState<GovtIdType>('Aadhaar');
   const [govtIdNumber, setGovtIdNumber] = useState('');
   const [validFrom, setValidFrom] = useState('2026-11-27');
-  const [validTo, setValidTo] = useState('2026-11-30');
+  const [validTo, setValidTo] = useState('2026-12-02');
   const [operatorName, setOperatorName] = useState('Print Station Operator');
   const [authoritySigUrl, setAuthoritySigUrl] = useState<string | null>(null);
 

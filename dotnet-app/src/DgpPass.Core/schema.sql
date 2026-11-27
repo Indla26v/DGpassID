@@ -1,4 +1,4 @@
--- 61st All India DGsP / IGPs Conference 2026 Pass Management Schema
+-- 61st All India DGPs / IGPs Conference 2026 Pass Management Schema
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS departments (
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS passes (
     zone_c BOOLEAN NOT NULL DEFAULT false,
     gate_zone_c VARCHAR(255),
     valid_from VARCHAR(32) NOT NULL DEFAULT '2026-11-27',
-    valid_to VARCHAR(32) NOT NULL DEFAULT '2026-11-30',
+    valid_to VARCHAR(32) NOT NULL DEFAULT '2026-12-02',
     photo_url TEXT,
     cardholder_signature_url TEXT,
     authority_signature_url TEXT,

@@ -377,7 +377,7 @@ export default function Dashboard() {
     const rows: (string | number)[][] =
       domain === 'all'
         ? [
-            ['61st All India DGsP / IGPs Conference 2026 - Unified Pass Operations Report', ''],
+            ['61st All India DGPs / IGPs Conference 2026 - Unified Pass Operations Report', ''],
             ['Report Scope', 'All Operations (Police Bandobusth Force + Campus & Agencies)'],
             ['Generated At (UTC)', new Date().toISOString()],
             [],
@@ -387,14 +387,14 @@ export default function Dashboard() {
           ]
         : domain === 'police'
         ? [
-            ['61st All India DGsP / IGPs Conference 2026 - Police Bandobusth Force Report', ''],
+            ['61st All India DGPs / IGPs Conference 2026 - Police Bandobusth Force Report', ''],
             ['Report Scope', 'Police Bandobusth Force Operations'],
             ['Generated At (UTC)', new Date().toISOString()],
             [],
             ...policeRows,
           ]
         : [
-            ['61st All India DGsP / IGPs Conference 2026 - Campus & Agencies Report', ''],
+            ['61st All India DGPs / IGPs Conference 2026 - Campus & Agencies Report', ''],
             ['Report Scope', 'Campus & Agencies Pass Operations'],
             ['Generated At (UTC)', new Date().toISOString()],
             [],
@@ -613,7 +613,7 @@ export default function Dashboard() {
             <div>
               <p className="header-eyebrow">Andhra Pradesh Police · IISER Tirupati</p>
               <h1 className="header-title">
-                61st All India DGsP / IGPs Conference <span>2026</span>
+                61st All India DGPs / IGPs Conference <span>2026</span>
               </h1>
             </div>
           </div>
@@ -743,7 +743,7 @@ export default function Dashboard() {
                   <span>Official Registry</span>
                 </div>
                 <div className="sidebar-event-title">
-                  61st All India DGsP / IGPs Conference
+                  61st All India DGPs / IGPs Conference
                 </div>
                 <div className="sidebar-event-meta">27 – 30 November 2026</div>
                 <div className="sidebar-event-meta">IISER &amp; IIT Tirupati, AP</div>
@@ -1730,7 +1730,7 @@ export default function Dashboard() {
             <span className={`footer-connection-dot ${error ? 'offline' : ''}`} />
             <span>{error ? 'Telemetry offline' : 'Aggregate telemetry online · Auto-refreshes every 60s'}</span>
           </div>
-          <div>61st All India DGsP / IGPs Conference · 2026</div>
+          <div>61st All India DGPs / IGPs Conference · 2026</div>
           <div>Official Andhra Pradesh Police Pass Protocol</div>
         </div>
       </footer>

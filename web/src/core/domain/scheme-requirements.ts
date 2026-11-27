@@ -1,6 +1,6 @@
 /**
  * Rank-wise strength required per sector (and some sub-sectors), transcribed from the
- * zone abstracts of the DGsP/IGsP Conference 2026 Zonal BB scheme (draft 19-11-2026).
+ * zone abstracts of the DGPs/IGPs Conference 2026 Zonal BB scheme (draft 19-11-2026).
  * Columns follow the scheme: SP, Addl. SP, DSP, CI, SI, ASI/HC, PC, WPC, HG.
  */
 import { POLICE_BANDOBUSHT_ZONES } from './police-zones';
