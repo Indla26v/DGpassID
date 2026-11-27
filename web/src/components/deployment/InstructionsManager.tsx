@@ -57,7 +57,7 @@ export function InstructionsManager() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold text-police-navy">Duty instructions</h2>
-          <p className="text-xs text-slate-500">Sent to zone and sector logins. They can view and print them.</p>
+          <p className="text-xs text-slate-500">Zone and sector logins can view them and print the passports.</p>
         </div>
         <PillButton type="button" variant="crimson" size="sm" icon={<Plus aria-hidden="true" className="size-4" />} onClick={() => { setNotice(''); setEditing('new'); }}>
           New instruction
@@ -120,7 +120,7 @@ export function InstructionsManager() {
         {!loading && !instructions.length && (
           <li className="rounded-2xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
             <Send aria-hidden="true" className="mx-auto mb-2 size-5 text-slate-400" />
-            No instructions yet. Use <span className="font-semibold">New instruction</span> to send one to the zones.
+            No instructions yet. Use <span className="font-semibold">New instruction</span> to save one for the zones.
           </li>
         )}
       </ul>
@@ -133,7 +133,7 @@ export function InstructionsManager() {
           onClose={() => setEditing(null)}
           onSaved={saved => {
             setEditing(null);
-            setNotice(editing === 'new' ? `"${saved.title}" sent to ${describeTargets(saved.targets)}.` : `"${saved.title}" updated (version ${saved.version}).`);
+            setNotice(editing === 'new' ? `"${saved.title}" saved for ${describeTargets(saved.targets)}. Print the passports from the list.` : `"${saved.title}" updated (version ${saved.version}).`);
             void load();
           }}
         />
