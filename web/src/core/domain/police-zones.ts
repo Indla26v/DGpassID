@@ -237,7 +237,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
           'Safe Houses & Safe Contingency Hospitals',
           'Supervising Officers',
         ],
-        allocation: 1901,
+        allocation: 1801,
       },
       { number: 'Sector 2', name: 'MT Section (Drivers)', allocation: 229 },
       {

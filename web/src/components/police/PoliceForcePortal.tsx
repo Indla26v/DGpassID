@@ -21,6 +21,7 @@ import { managesAccounts } from '@/core/domain/offices';
 import { OfficerSelectionPanel } from '../deployment/OfficerSelectionPanel';
 import { PointAssignmentPortal } from '../deployment/PointAssignmentPortal';
 import { PrintTeamPortal } from '../print/PrintTeamPortal';
+import { PassportPrintButton } from '../deployment/PassportPrintButton';
 import { PoliceExportPanel } from './PoliceExportPanel';
 import { PoliceDashboard } from './PoliceDashboard';
 import { InstructionsManager } from '../deployment/InstructionsManager';
@@ -87,7 +88,7 @@ export const PoliceForcePortal: React.FC = () => {
         { id: 'incharges' as const, label: 'Incharges', hint: 'Sector and sub-sector incharges', Icon: UserCheck },
       ],
     }] : []),
-    ...(isSp ? [{ id: 'instructions' as const, label: 'Instructions', hint: 'Send duty instructions to zones', Icon: ClipboardList }] : []),
+    ...(isSp ? [{ id: 'instructions' as const, label: 'Instructions', hint: 'Duty instructions and passports for zones', Icon: ClipboardList }] : []),
     ...(isSp || isOperator ? [{ id: 'scan' as const, label: 'Scan & Issue', hint: 'Scan ID cards to issue them', Icon: ScanLine }] : []),
     // Import and Export under one dropdown for the SP; other office admins only have Import, shown on its own.
     ...(isSp ? [{
@@ -527,6 +528,7 @@ export const PoliceForcePortal: React.FC = () => {
                               <Printer aria-hidden="true" className="size-3.5" />
                               <span className="hidden xl:inline">Print</span>
                             </button>
+                            {isSp && <PassportPrintButton passId={pass.id} assigned={Boolean(pass.police_zone && pass.police_sector_number)} />}
                             {!isCollected && pass.status === 'PRINTED' && pass.printed_count > 0 && (
                               issueTarget === pass.id ? (
                                 <>

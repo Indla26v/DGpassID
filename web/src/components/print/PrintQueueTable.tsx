@@ -4,6 +4,7 @@ import React from 'react';
 import { PassEntity } from '@/core/domain/entities/pass.entity';
 import { CollectionFeedback, CollectionPagination } from '../common/CollectionFeedback';
 import { PillButton } from '../common/PillButton';
+import { PassportPrintButton } from '../deployment/PassportPrintButton';
 import { CustomSelect } from '../common/CustomSelect';
 import {
   Printer,
@@ -334,7 +335,7 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
                     </td>
 
                     {/* Action */}
-                    <td className="py-3 px-3.5 text-right">
+                    <td className="whitespace-nowrap py-3 px-3.5 text-right">
                       {isPending ? (
                         <div className="flex items-center justify-end gap-1.5">
                           {onEditPass && (
@@ -365,6 +366,11 @@ export const PrintQueueTable: React.FC<PrintQueueTableProps> = ({
                         >
                           {pass.status === 'READY_TO_PRINT' ? 'Print Badge' : pass.status === 'PRINTED' ? 'Reprint' : 'Not queued'}
                         </PillButton>
+                      )}
+                      {police && (
+                        <span className="ml-1.5 inline-flex align-middle">
+                          <PassportPrintButton passId={pass.id} assigned={Boolean(pass.police_zone && pass.police_sector_number)} />
+                        </span>
                       )}
                     </td>
                   </tr>

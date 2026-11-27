@@ -1,6 +1,6 @@
 /**
  * Rank-wise strength required per sector (and some sub-sectors), transcribed from the
- * zone abstracts of the DGPs/IGPs Conference 2026 Zonal BB scheme (draft 19-11-2026).
+ * zone abstracts of the DGPs/IGPs Conference 2026 Zonal BB scheme (draft 26-11-2026).
  * Columns follow the scheme: SP, Addl. SP, DSP, CI, SI, ASI/HC, PC, WPC, HG.
  */
 import { POLICE_BANDOBUSHT_ZONES } from './police-zones';
@@ -56,14 +56,14 @@ export const SCHEME_REQUIREMENTS: Record<Key, RankRequirement> = {
   'ZONE-4|Sector 16': R(0, 0, 0, 2, 6, 6, 17),
   'ZONE-4|Sector 17': R(0, 0, 0, 2, 4, 20, 50, 2),
 
-  // Zone 5 — Accommodations (432)
+  // Zone 5 — Accommodations (427)
   'ZONE-5|Sector 1': R(0, 0, 0, 4, 4, 4, 12),
   'ZONE-5|Sector 2': R(0, 0, 0, 6, 19, 26, 82),
-  'ZONE-5|Sector 3': R(1, 1, 8, 14, 21, 60, 154, 16),
+  'ZONE-5|Sector 3': R(1, 1, 8, 13, 21, 58, 152, 16),
 
-  // Zone 6 — Sub-Controls & Essentials (571). The scheme lists the ICCC inside Sub-Controls (point 9).
+  // Zone 6 — ICCC, Sub-Controls & Essentials (576)
   'ZONE-6|Sector 1': R(2, 0, 2, 2, 4, 10, 10, 4),
-  'ZONE-6|Sector 2': R(0, 5, 14, 49, 70, 68, 164, 18),
+  'ZONE-6|Sector 2': R(0, 5, 14, 50, 70, 70, 166, 18),
   'ZONE-6|Sector 3': R(0, 0, 1, 10, 16, 12, 110),
 
   // Zone 7 — Contingency Plan (487)
@@ -73,11 +73,15 @@ export const SCHEME_REQUIREMENTS: Record<Key, RankRequirement> = {
   'ZONE-7|Sector 4': R(0, 0, 1, 8, 8, 32, 48),
   'ZONE-7|Sector 5': R(0, 1, 2, 10, 28, 56, 118),
 
-  // Zone 8 — Security Component (abstract uses the civil column names for the AR component).
-  'ZONE-8|Sector 1': R(0, 7, 22, 97, 149, 147, 300),
+  // Zone 8 — Security Component (2824; abstract uses the civil column names for the AR component).
+  // Sector 1 (1801) = AR component, convoy officers, liaison, special party, APSP, OCTOPUS, Greyhounds, CPT/APT.
+  'ZONE-8|Sector 1': R(0, 7, 27, 134, 234, 147, 1252),
   'ZONE-8|Sector 1|Liaison officers': R(0, 0, 0, 73, 95, 82, 0),
   'ZONE-8|Sector 2': R(0, 0, 0, 0, 0, 0, 229),
   'ZONE-8|Sector 3': R(0, 0, 0, 0, 0, 0, 516, 100),
+  // SDRF (SI 2, PC 38) + NDRF (CI 2, ASI/HC 14, PC 44)
+  'ZONE-8|Sector 4': R(0, 0, 0, 2, 2, 14, 82),
+  'ZONE-8|Sector 5': R(0, 0, 0, 0, 0, 0, 78),
 };
 
 const keyFor = (zoneName: string, sectorNumber: string, subSector?: string | null) => {

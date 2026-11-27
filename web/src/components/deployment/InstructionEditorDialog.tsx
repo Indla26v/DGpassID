@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowUp, CalendarCheck, Check, ChevronDown, Plus, RotateCcw, Send, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CalendarCheck, Check, ChevronDown, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import { PillButton } from '../common/PillButton';
 import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
 import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
@@ -150,7 +150,7 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
   const fillEmptyDates = () => setEntries(previous => previous.map(entry => (entry.entity.trim() && !entry.date ? { ...entry, date: passport.duty_from } : entry)));
   const emptyDates = entries.filter(entry => entry.entity.trim() && !entry.date).length;
 
-  // What is still needed before sending, shown in the footer.
+  // What is still needed before saving, shown in the footer.
   const missing = [
     !title.trim() && 'a title',
     !filledEntries.some(entry => entry.entity.trim()) && 'at least one report entity',
@@ -201,18 +201,18 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
           {/* Form */}
           <div className="space-y-3 bg-slate-50 p-3 sm:p-4 lg:overflow-y-auto">
             <Step number={1} title="Name and recipients" done={Boolean(title.trim())}
-              description={limited ? 'Only your own zones and sectors. Officers posted there get the passports.' : 'Zone and sector logins in these areas receive it and print the passports.'}>
+              description={limited ? 'Only your own zones and sectors. Officers posted there get the passports.' : 'Zone and sector logins in these areas can print the passports for their officers.'}>
               <label className="block space-y-1">
                 <span className={label}>Title</span>
                 <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="e.g. Phase-I duty instructions, 04-06 December" className={field} />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="min-w-0 space-y-1">
-                  <span aria-hidden="true" className={label}>Send to {limited && allowedZones.length === 1 ? 'zone' : 'zones'}</span>
+                  <span aria-hidden="true" className={label}>For {limited && allowedZones.length === 1 ? 'zone' : 'zones'}</span>
                   {limited && allowedZones.length === 1 ? (
                     <p className="flex min-h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700">{zoneLabel(allowedZones[0])}</p>
                   ) : (
-                    <MultiSelectDropdown ariaLabel="Send to zones" emptyLabel={limited ? 'All my zones' : 'All zones'}
+                    <MultiSelectDropdown ariaLabel="For zones" emptyLabel={limited ? 'All my zones' : 'All zones'}
                       options={allowedZones.map(zoneLabel)}
                       value={allowedZones.filter(zone => zoneNames.includes(zone.name)).map(zoneLabel)}
                       onChange={labels => {
@@ -225,7 +225,7 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
                 <div className="min-w-0 space-y-1">
                   <span aria-hidden="true" className={label}>Sectors <span className={hint}>(optional)</span></span>
                   {singleZone ? (
-                    <MultiSelectDropdown ariaLabel="Send to sectors" emptyLabel={wholeZone(singleZone.name) ? 'All sectors of the zone' : 'All my sectors'}
+                    <MultiSelectDropdown ariaLabel="For sectors" emptyLabel={wholeZone(singleZone.name) ? 'All sectors of the zone' : 'All my sectors'}
                       options={sectorsFor(singleZone).map(sectorLabel)}
                       value={sectorsFor(singleZone).filter(sector => sectorNumbers.includes(sector.number)).map(sectorLabel)}
                       onChange={labels => {
@@ -242,12 +242,12 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
               {singleSector?.subSectors?.length ? (
                 <div className="min-w-0 space-y-1">
                   <span aria-hidden="true" className={label}>Sub-sectors of {singleSector.number} <span className={hint}>(optional)</span></span>
-                  <MultiSelectDropdown ariaLabel={`Send to sub-sectors of ${singleSector.number}`} emptyLabel={onlySubs(singleZone!.name, singleSector.number) ? 'All my sub-sectors' : `Whole ${singleSector.number} (all sub-sectors)`}
+                  <MultiSelectDropdown ariaLabel={`For sub-sectors of ${singleSector.number}`} emptyLabel={onlySubs(singleZone!.name, singleSector.number) ? 'All my sub-sectors' : `Whole ${singleSector.number} (all sub-sectors)`}
                     options={offeredSubSectors} value={chosenSubSectors} onChange={setSubSectors} />
                   <p className="text-xs text-slate-500">
                     {chosenSubSectors.length
                       ? 'Passports are printed only for officers posted in these sub-sectors. Sector and zone logins still receive it.'
-                      : 'Pick sub-sectors to send it only to the officers posted there.'}
+                      : 'Pick sub-sectors to make it only for the officers posted there.'}
                   </p>
                 </div>
               ) : singleZone && sectorNumbers.length > 1 ? (
@@ -429,13 +429,13 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
           <div className="mr-auto min-w-0 text-sm">
             {error ? <p role="alert" className="text-rose-800">{error}</p>
               : missing.length ? <p className="text-slate-600">Still needed: {missing.join(', ')}.</p>
-                : passportGaps.length ? <p className="text-amber-800">Ready to send. For the passport, also set: {passportGaps.join(', ')}.</p>
-                  : <p className="text-emerald-700">Ready to send.</p>}
+                : passportGaps.length ? <p className="text-amber-800">Ready to save. For the passport, also set: {passportGaps.join(', ')}.</p>
+                  : <p className="text-emerald-700">Ready to save.</p>}
           </div>
           <PillButton type="button" variant="outline" onClick={onClose} disabled={busy}>Cancel</PillButton>
           <PillButton type="button" variant="crimson" onClick={save} disabled={busy || missing.length > 0}
-            icon={<Send aria-hidden="true" className="size-4" />}>
-            {busy ? 'Saving…' : editing ? 'Save and resend' : 'Send instruction'}
+            icon={<Save aria-hidden="true" className="size-4" />}>
+            {busy ? 'Saving…' : editing ? 'Save changes' : 'Save instruction'}
           </PillButton>
         </footer>
       </div>

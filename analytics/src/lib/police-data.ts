@@ -275,7 +275,7 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
       {
         number: 'Sector 1',
         name: 'AR Component (Convoys, Pilots, Escorts, PSOs)',
-        allocation: 1901,
+        allocation: 1801,
         subSectors: [
           'Convoy Officers - Civil component',
           'Liaison officers',

@@ -144,7 +144,7 @@ export function InstructionsBoard({ onCount, scope, userEmail }: {
           onClose={() => setEditing(null)}
           onSaved={saved => {
             setEditing(null);
-            setNotice(editing === 'new' ? `"${saved.title}" sent to ${describeTargets(saved.targets)}.` : `"${saved.title}" updated (version ${saved.version}).`);
+            setNotice(editing === 'new' ? `"${saved.title}" saved for ${describeTargets(saved.targets)}. Print the passports from the list.` : `"${saved.title}" updated (version ${saved.version}).`);
             setReload(value => value + 1);
           }}
         />
