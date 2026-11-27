@@ -12,7 +12,7 @@ type CampusSection = 'passes' | 'print' | 'export';
 const sections: SidebarSection<CampusSection>[] = [
   { id: 'passes', label: 'Passes', hint: 'Campus & agency ID cards', Icon: Building2 },
   { id: 'print', label: 'Print Queue', hint: 'Approve, print, reprint', Icon: Printer },
-  { id: 'export', label: 'Export', hint: 'CSV / PDF rosters', Icon: FileSpreadsheet },
+  { id: 'export', label: 'Export', hint: 'CSV / PDF lists', Icon: FileSpreadsheet },
 ];
 
 /** Campus & Agencies area: passes, its own print queue and exports. */

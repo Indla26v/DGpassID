@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Ban, FileText, Pencil, Plus, Send } from 'lucide-react';
+import { Ban, FileText, IdCard, Pencil, Plus, Send } from 'lucide-react';
 import { PillButton } from '../common/PillButton';
 import { describeTargets } from '@/core/domain/duty-instructions';
 import type { DutyInstruction } from '@/modules/deployment/instructions.repository';
 import { InstructionEditorDialog } from './InstructionEditorDialog';
-import { InstructionTable } from './InstructionTable';
+import { PassportPrintDialog } from './PassportPrintDialog';
+import { BackSideList, InstructionTable } from './InstructionTable';
 
 export const formatIst = (value: string | null) => value ? new Intl.DateTimeFormat('en-GB', {
   timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -21,6 +22,7 @@ export function InstructionsManager() {
   const [editing, setEditing] = useState<DutyInstruction | null | 'new'>(null);
   const [confirmWithdraw, setConfirmWithdraw] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [passports, setPassports] = useState<DutyInstruction | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +94,7 @@ export function InstructionsManager() {
                   </a>
                   {active && (
                     <>
+                      <PillButton type="button" size="sm" variant="outline" icon={<IdCard aria-hidden="true" className="size-3.5" />} onClick={() => setPassports(item)}>Duty passports</PillButton>
                       <PillButton type="button" size="sm" variant="outline" icon={<Pencil aria-hidden="true" className="size-3.5" />} onClick={() => { setNotice(''); setEditing(item); }}>Edit</PillButton>
                       {confirmWithdraw === item.id ? (
                         <>
@@ -108,6 +111,7 @@ export function InstructionsManager() {
               {open === item.id && (
                 <div className="mt-3 rounded-2xl border border-slate-100 p-3">
                   <InstructionTable heading={item.heading} closing={item.closing} entries={item.entries} />
+                  <div className="mt-3"><BackSideList title={item.back_title} points={item.back_points ?? []} /></div>
                 </div>
               )}
             </li>
@@ -120,6 +124,8 @@ export function InstructionsManager() {
           </li>
         )}
       </ul>
+
+      {passports && <PassportPrintDialog instruction={passports} onClose={() => setPassports(null)} />}
 
       {editing && (
         <InstructionEditorDialog

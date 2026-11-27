@@ -14,7 +14,7 @@ Next.js app (`web/`) but as service-shaped modules, so they can be lifted out on
 | Scheme | Zones/sectors/sub-sectors in `web/src/core/domain/police-zones.ts`; duty points in `bandobast-points.json` |
 
 Pain points a split would address: one table carries identity, deployment and printing concerns;
-any change redeploys everything; print bursts and roster imports compete with the SP's screens for the same
+any change redeploys everything; print bursts and personnel imports compete with the SP's screens for the same
 process and DB pool.
 
 ## 2. Target services
@@ -22,7 +22,7 @@ process and DB pool.
 | # | Service | Owns (data) | Main API | Notes |
 |---|---|---|---|---|
 | 1 | **Identity & Access** | `app_users`, `app_sessions`, `auth_login_attempts`, zone/sector scopes | login, logout, session, users, scopes | Issues short-lived signed service tokens (JWT, 5 min) from the session cookie at the gateway |
-| 2 | **Personnel / Roster** | officers: identity, rank, district, DOB/age, photo, Aadhaar (encrypted) | roster import, officer CRUD, search, `GET /officers?rank=&district=` | Rank groups (`ranks.ts`), roster parser, age helpers move here |
+| 2 | **Personnel** | officers: identity, rank, district, DOB/age, photo, Aadhaar (encrypted) | personnel import, officer CRUD, search, `GET /officers?rank=&district=` | Rank groups (`ranks.ts`), personnel parser, age helpers move here |
 | 3 | **Deployment** | scheme tree (zones → sectors → sub-sectors → points), `deployment_batches`, officer postings | `POST /selection`, `POST /allot`, `PATCH /points`, `GET /officers?zone=&sector=` | Already isolated in `web/src/modules/deployment/` (pure `selection.ts` + `deployment.repository.ts`) |
 | 4 | **ID Card** | card templates, print jobs, print counts, authority signatures | render card, print queue, reprint, issue/hand-over | Reads officer + posting snapshot; rendering can run as a worker |
 | 5 | **Verification** | verification tokens, gate scans | `POST /verify` (QR), scan log | Read-heavy, must stay up during the event: scale separately, cache postings |
@@ -75,7 +75,7 @@ with a service token. Browsers never call services directly.
 4. Extract **Deployment**: move `modules/deployment` into its own Node service; gateway proxies
    `/api/deployment/*`; postings table moves to the `deployment` schema.
 5. Extract **Verification** with a read model of active cards + postings (needed for gate scale on event days).
-6. Extract **Personnel** (roster import, officer CRUD) and **ID Card** (print queue, rendering worker).
+6. Extract **Personnel** (personnel import, officer CRUD) and **ID Card** (print queue, rendering worker).
 7. Retire the `passes` compatibility view.
 
 Each step ships behind the gateway with the same URLs, so the UI does not change.
@@ -93,7 +93,7 @@ Each step ships behind the gateway with the same URLs, so the UI does not change
 Import, Duty Points, Bandobast Force directory, police ID card print/issue) already works only on
 `pass_type = 'POLICE_FORCE'` rows plus its own tables, and the code is mostly isolated
 (`modules/deployment`, `components/police`, `components/deployment`, `/api/deployment/*`,
-`/api/police-force/*`, `lib/police-roster-import.ts`, `core/domain/{ranks,police-zones,scheme-requirements}.ts`).
+`/api/police-force/*`, `lib/police-personnel-import.ts`, `core/domain/{ranks,police-zones,scheme-requirements}.ts`).
 One service ("Police Force service") is better than splitting it further into Personnel and Deployment now:
 the screens always use officers and postings together, and one team owns it.
 
@@ -105,7 +105,7 @@ the screens always use officers and postings together, and one team owns it.
 | `postings` | officer_id, zone, sector, sub-sector, point code, batch_id, status | `police_zone` / `police_sector_*` / `police_point_*` columns |
 | `deployment_batches` | SP selection batches | same table |
 | `police_cards` | card number, verification token, print count, issue/hand-over | card columns of `passes` |
-| `roster_imports` | import history | `audit_logs` entries |
+| `personnel_imports` | import history | `audit_logs` entries |
 | `settings` | age cutoff, authority name/title/signature copy | `conference_configs`, `pass_offices` |
 | `outbox` | events to publish | new |
 

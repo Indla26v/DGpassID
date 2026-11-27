@@ -1,5 +1,5 @@
 /**
- * Police ranks for the bandobast roster.
+ * Police ranks for bandobast personnel.
  * ASI, WASI, HC and WHC are stored individually (selection ratios need them)
  * but are shown and filtered together as "ASI/HC".
  */
@@ -52,7 +52,7 @@ const RANK_ALIASES: Record<string, PoliceRank> = {
   RI: 'RI', RESERVEINSPECTOR: 'RI',
 };
 
-/** Maps a free-text rank from a roster or form to a canonical rank. Unknown ranks are kept upper-cased. */
+/** Maps a free-text rank from an import file or form to a canonical rank. Unknown ranks are kept upper-cased. */
 export function normalizeRank(raw?: string | null): string {
   const value = (raw ?? '').trim();
   if (!value) return '';
@@ -90,7 +90,7 @@ export function isForceCategory(value: unknown): value is ForceCategory {
   return typeof value === 'string' && (FORCE_CATEGORIES as readonly string[]).includes(value);
 }
 
-/** Maps a roster "Force" value to a category. Blank values are derived from the rank (AR ranks = AR). */
+/** Maps an imported "Force" value to a category. Blank values are derived from the rank (AR ranks = AR). */
 export function normalizeForce(raw?: string | null, rank?: string | null): ForceCategory {
   const value = compact(raw ?? '');
   if (!value) return isArRank(rank) ? 'AR' : 'CIVIL';
@@ -108,7 +108,7 @@ export function isWomenRank(rank?: string | null): boolean {
   return /^W(PC|HC|ASI|SI)$/.test(normalizeRank(rank));
 }
 
-/** Maps a roster gender value. Blank values are derived from the rank (W-ranks = Female, others = Male). */
+/** Maps an imported gender value. Blank values are derived from the rank (W-ranks = Female, others = Male). */
 export function normalizeGender(raw?: string | null, rank?: string | null): Gender {
   const value = compact(raw ?? '');
   if (!value) return isWomenRank(rank) ? 'FEMALE' : 'MALE';

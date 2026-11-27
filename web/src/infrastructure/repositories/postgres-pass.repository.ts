@@ -111,6 +111,7 @@ export class PostgresPassRepository implements IPassRepository {
       WHERE u.id = $${params.length} AND u.role IN ('POLICE_PRINT', 'BANDOBAST_OFFICER') AND u.is_active
         AND assignment->>'zone' = ${alias}.police_zone
         AND (assignment->>'sector' IS NULL OR assignment->>'sector' = ${alias}.police_sector_number)
+        AND (NULLIF(assignment->>'subSector', '') IS NULL OR assignment->>'subSector' = ${alias}.police_sector_name)
     )`;
   }
 
@@ -1342,7 +1343,7 @@ export class PostgresPassRepository implements IPassRepository {
 
         await client.query(
           `INSERT INTO audit_logs (pass_id, pass_number, action, performed_by, user_role, details, office_id)
-           VALUES ($1, $2, 'POLICE_ROSTER_UPDATED', $3, $4, 'Officer roster record and bandobusth duty assignment updated via single import.', $5)`,
+           VALUES ($1, $2, 'POLICE_PERSONNEL_UPDATED', $3, $4, 'Officer personnel record and bandobusth duty assignment updated via single import.', $5)`,
           [existingPass.id, existingPass.pass_number, actor.email, actor.role, actor.officeId || null]
         );
 

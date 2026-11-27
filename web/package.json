@@ -12,6 +12,7 @@
     "@vercel/analytics": "^2.0.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
+    "jsqr": "1.4.0",
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
     "pg": "^8.13.3",

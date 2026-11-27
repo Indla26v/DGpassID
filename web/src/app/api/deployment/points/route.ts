@@ -3,6 +3,7 @@ import { authorizeRequest } from '@/lib/auth/session-helper';
 import { managesAccounts } from '@/core/domain/offices';
 import { findDutyPoint, POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { assignDutyPoint, deploymentScopeOf } from '@/modules/deployment/deployment.repository';
+import { scopeCovers } from '@/core/domain/police-print-scope';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,8 +39,8 @@ export async function PATCH(req: Request) {
 
     const scope = deploymentScopeOf(auth.user);
     const zoneWide = scope === 'ALL' || scope.some(item => item.zone === zone.name && item.sector === null);
-    if (!zoneWide && !scope.some(item => item.zone === zone.name && item.sector === sector.number)) {
-      return NextResponse.json({ error: 'This sector is not assigned to you.' }, { status: 403 });
+    if (!zoneWide && !scopeCovers(scope, zone.name, sector.number, subSector)) {
+      return NextResponse.json({ error: subSector ? 'This sub-sector is not assigned to you.' : 'This sector is not assigned to you.' }, { status: 403 });
     }
 
     const result = await assignDutyPoint({

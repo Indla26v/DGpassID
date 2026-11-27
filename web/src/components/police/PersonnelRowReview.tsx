@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImageIcon, X } from 'lucide-react';
 import { dutyPointsFor, POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
-import { readPoliceRosterPhoto, type PoliceRosterRow } from '@/lib/police-roster-import';
-import { photoBlob, resolveReviewPhoto, rosterDetailsIssue, type PhotoOverride, type ReviewPhoto } from '@/lib/roster-import-review';
+import { readPolicePersonnelPhoto, type PolicePersonnelRow } from '@/lib/police-personnel-import';
+import { photoBlob, resolveReviewPhoto, personnelDetailsIssue, type PhotoOverride, type ReviewPhoto } from '@/lib/personnel-import-review';
 import { CustomSelect } from '../common/CustomSelect';
 import { PillButton } from '../common/PillButton';
 import { useDialog } from '../common/useDialog';
 
-export function RosterPhotoPreview({ photo, label, large = false }: { photo: ReviewPhoto; label: string; large?: boolean }) {
+export function PersonnelPhotoPreview({ photo, label, large = false }: { photo: ReviewPhoto; label: string; large?: boolean }) {
   const file = 'file' in photo ? photo.file : undefined;
   const picture = 'picture' in photo ? photo.picture : undefined;
   const directUrl = photo.kind === 'link' ? photo.url : '';
@@ -44,11 +44,11 @@ const officerFields = [
   ['mobile_number', 'Mobile number'], ['govt_id_number', 'Aadhaar number'],
 ] as const;
 
-export function RosterRowReview({ row, photoOverride, onClose, onSave }: {
-  row: PoliceRosterRow;
+export function PersonnelRowReview({ row, photoOverride, onClose, onSave }: {
+  row: PolicePersonnelRow;
   photoOverride?: PhotoOverride;
   onClose: () => void;
-  onSave: (row: PoliceRosterRow, photoOverride: PhotoOverride | undefined) => void;
+  onSave: (row: PolicePersonnelRow, photoOverride: PhotoOverride | undefined) => void;
 }) {
   const [draft, setDraft] = useState(row);
   const [override, setOverride] = useState(photoOverride);
@@ -61,9 +61,9 @@ export function RosterRowReview({ row, photoOverride, onClose, onSave }: {
   const selectedSector = zone?.sectors.find(item => item.number === draft.record.police_sector_number);
   const selectedSubSector = selectedSector?.subSectors?.includes(draft.record.police_sector_name) ? draft.record.police_sector_name : '';
   const points = dutyPointsFor(zone?.name, selectedSector?.number, selectedSector?.subSectors?.length ? selectedSubSector || null : undefined);
-  const setDuty = (changes: Partial<PoliceRosterRow['record']>) => setDraft(current => ({ ...current, dutyWarning: '',
+  const setDuty = (changes: Partial<PolicePersonnelRow['record']>) => setDraft(current => ({ ...current, dutyWarning: '',
     record: { ...current.record, ...changes }, dutyEdited: true }));
-  const detailIssue = rosterDetailsIssue(draft);
+  const detailIssue = personnelDetailsIssue(draft);
 
   const choosePhoto = async (choice: Extract<PhotoOverride, { kind: 'choice' | 'replacement' }>) => {
     const selected = choice.kind === 'replacement' ? choice.file
@@ -71,7 +71,7 @@ export function RosterRowReview({ row, photoOverride, onClose, onSave }: {
     setReadingPhoto(true);
     setFileError('');
     try {
-      await readPoliceRosterPhoto(selected);
+      await readPolicePersonnelPhoto(selected);
       setOverride(choice);
     } catch {
       setFileError('Choose a readable JPG, PNG or WebP image up to 20 MB.');
@@ -150,7 +150,7 @@ export function RosterRowReview({ row, photoOverride, onClose, onSave }: {
 
           <section aria-label="Officer photograph" className="min-w-0 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <div className="flex flex-col items-center gap-2 text-center">
-              <RosterPhotoPreview photo={photo} large label={`Selected photo for ${draft.record.full_name || 'this row'}`} />
+              <PersonnelPhotoPreview photo={photo} large label={`Selected photo for ${draft.record.full_name || 'this row'}`} />
               <p className="text-xs text-slate-600">{photo.kind === 'review' ? photo.message :
                 photo.kind === 'defer' ? 'Photo deferred to desk capture.' : 'Photo selected for this officer.'}</p>
             </div>
@@ -161,7 +161,7 @@ export function RosterRowReview({ row, photoOverride, onClose, onSave }: {
                     disabled={readingPhoto}
                     className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-left text-xs font-semibold text-police-navy hover:border-police-crimson aria-pressed:border-police-crimson aria-pressed:bg-rose-50"
                     onClick={() => { void choosePhoto({ kind: 'choice', picture }); }}>
-                    <RosterPhotoPreview photo={{ kind: 'embedded', picture }} label={`Embedded candidate ${index + 1}`} />
+                    <PersonnelPhotoPreview photo={{ kind: 'embedded', picture }} label={`Embedded candidate ${index + 1}`} />
                     Use photo {index + 1}
                   </button>
                 ))}

@@ -28,7 +28,7 @@ export function repeatedAadhaarNumbers(values: Iterable<string>): Set<string> {
   return repeated;
 }
 
-export const DUPLICATE_ROSTER_AADHAAR = 'This Aadhaar appears on multiple selected rows. Enter the correct Aadhaar for each officer.';
+export const DUPLICATE_PERSONNEL_AADHAAR = 'This Aadhaar appears on multiple selected rows. Enter the correct Aadhaar for each officer.';
 
 export function validateMobile(value?: string | null): void {
   if (!value || !/^[6-9][0-9]{9}$/.test(value)) {

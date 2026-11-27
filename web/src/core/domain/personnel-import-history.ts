@@ -1,4 +1,4 @@
-export interface RosterImportSummary {
+export interface PersonnelImportSummary {
   filename: string;
   detected: number;
   created: number;
@@ -12,7 +12,7 @@ export interface RosterImportSummary {
   };
 }
 
-export interface RosterImportHistoryEntry extends RosterImportSummary {
+export interface PersonnelImportHistoryEntry extends PersonnelImportSummary {
   id: number;
   createdAt: string;
   importedBy: string;

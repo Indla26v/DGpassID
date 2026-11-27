@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { canImportDistrictProforma } from '@/core/domain/offices';
-import type { RosterImportHistoryEntry, RosterImportSummary } from '@/core/domain/roster-import-history';
+import type { PersonnelImportHistoryEntry, PersonnelImportSummary } from '@/core/domain/personnel-import-history';
 import { services } from '@/core/services/service-container';
 import { query } from '@/infrastructure/db/pool';
 import { authorizeRequest } from '@/lib/auth/session-helper';
 
-const action = 'POLICE_ROSTER_IMPORT';
+const action = 'POLICE_PERSONNEL_IMPORT';
 
 function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 5000;
@@ -26,8 +26,8 @@ export async function GET(req: Request) {
       'SELECT id, created_at, performed_by, details FROM audit_logs WHERE action = $1 ORDER BY created_at DESC, id DESC LIMIT 100',
       [action],
     );
-    const history: RosterImportHistoryEntry[] = rows.map(row => ({
-      ...JSON.parse(row.details) as RosterImportSummary,
+    const history: PersonnelImportHistoryEntry[] = rows.map(row => ({
+      ...JSON.parse(row.details) as PersonnelImportSummary,
       id: row.id,
       createdAt: row.created_at,
       importedBy: row.performed_by,
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       !isCount(needsReview) || !isCount(skipped) || created + updated + needsReview + skipped > detected) {
     return NextResponse.json({ error: 'Invalid import summary.' }, { status: 400 });
   }
-  const summary: RosterImportSummary = { filename: filename.trim(), detected, created, updated, needsReview, skipped };
+  const summary: PersonnelImportSummary = { filename: filename.trim(), detected, created, updated, needsReview, skipped };
   if (resume !== undefined) {
     if (!resume || typeof resume.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(resume.fingerprint) ||
         !isRowList(resume.importedRows, detected) || !isRowList(resume.skippedRows, detected) ||

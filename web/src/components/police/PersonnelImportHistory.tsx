@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { RosterImportHistoryEntry } from '@/core/domain/roster-import-history';
+import type { PersonnelImportHistoryEntry } from '@/core/domain/personnel-import-history';
 import { CollectionFeedback } from '../common/CollectionFeedback';
 import { PillButton } from '../common/PillButton';
 
-export function RosterImportHistory({ onReview, disabled }: {
-  onReview: (entry: RosterImportHistoryEntry) => void;
+export function PersonnelImportHistory({ onReview, disabled }: {
+  onReview: (entry: PersonnelImportHistoryEntry) => void;
   disabled: boolean;
 }) {
-  const [entries, setEntries] = useState<RosterImportHistoryEntry[]>([]);
+  const [entries, setEntries] = useState<PersonnelImportHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -42,7 +42,7 @@ export function RosterImportHistory({ onReview, disabled }: {
         <p className="px-4 py-6 text-center text-sm text-slate-600">No import history has been recorded yet.</p>
       ) : (
         <table className="w-full min-w-[660px] text-left text-xs">
-          <caption className="sr-only">The 100 most recent roster import attempts</caption>
+          <caption className="sr-only">The 100 most recent personnel import attempts</caption>
           <thead className="bg-slate-50 text-slate-600">
             <tr>
               <th scope="col" className="px-3 py-2.5">File</th>

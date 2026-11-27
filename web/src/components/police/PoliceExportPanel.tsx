@@ -110,7 +110,7 @@ export function PoliceExportPanel({ knownDistricts, scope }: {
   return (
     <section aria-label="Police Force export" className="operations-panel operations-enter space-y-3 p-3 sm:p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold text-police-navy">Export police roster</h2>
+        <h2 className="text-base font-semibold text-police-navy">Export police personnel</h2>
         <p className="text-sm text-slate-600" aria-live="polite">
           <span className="font-semibold text-police-navy">{loading ? 'Counting…' : `${(preview?.total ?? 0).toLocaleString()} officers`}</span>
           {' '}match these filters

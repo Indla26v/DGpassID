@@ -6,7 +6,7 @@ import type { DutyInstruction } from '@/modules/deployment/instructions.reposito
 
 const NAVY: [number, number, number] = [31, 73, 112];
 // The built-in PDF fonts are Latin-1 only: swap typographic characters for plain ones.
-const pdfText = (value: string) => value.replace(/[–—]/g, '-').replace(/[·•]/g, '|').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...');
+export const pdfText = (value: string) => value.replace(/[–—]/g, '-').replace(/[·•]/g, '|').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...');
 
 /** A4 duty instruction: header, heading line, S.No / Report Entities / Date / Time / Place table, closing line. */
 export function instructionPdf(instruction: DutyInstruction): Uint8Array {

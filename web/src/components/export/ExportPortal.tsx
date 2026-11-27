@@ -202,7 +202,7 @@ export const ExportPortal: React.FC = () => {
 
   return (
     <div className="min-w-0 space-y-4 pb-4">
-      <OperationsHeader title="Duty ID Card Data Export" description="Download CSV files or print-ready PDF rosters for the full registry, subdivisions or departments.">
+      <OperationsHeader title="Duty ID Card Data Export" description="Download CSV files or print-ready PDF lists for the full registry, subdivisions or departments.">
         <PillButton
           variant="outline"
           size="sm"
@@ -418,7 +418,7 @@ export const ExportPortal: React.FC = () => {
               <h3 className="text-lg font-bold text-[#0B2545]">Department Wise Export</h3>
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Download Campus &amp; Agencies pass rosters by department.
+              Download Campus &amp; Agencies pass lists by department.
             </p>
           </div>
 

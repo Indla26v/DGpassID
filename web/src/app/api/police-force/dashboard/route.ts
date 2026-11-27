@@ -16,11 +16,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const force = searchParams.get('force') || '';
   const zone = searchParams.get('zone') || '';
+  const district = (searchParams.get('district') || '').replace(/\s+/g, ' ').trim().slice(0, 120);
   if (force && !isForceCategory(force)) return NextResponse.json({ error: 'Choose a force category.' }, { status: 400 });
   if (zone && !POLICE_BANDOBUSHT_ZONES.some(item => item.name === zone)) return NextResponse.json({ error: 'Choose a zone from the scheme.' }, { status: 400 });
 
   try {
-    const dashboard = await loadPoliceDashboard({ force: force || undefined, zone: zone || undefined });
+    const dashboard = await loadPoliceDashboard({ force: force || undefined, zone: zone || undefined, district: district || undefined });
     return NextResponse.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Police dashboard error:', error);

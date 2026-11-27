@@ -15,7 +15,7 @@ export type AgeBand = 'OLD' | 'YOUNG';
 export interface SelectionCandidate {
   id: string;
   rank: string;
-  /** Age in years, or null when the roster has no DOB / age. */
+  /** Age in years, or null when the import has no DOB / age. */
   age: number | null;
 }
 

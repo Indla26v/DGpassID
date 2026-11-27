@@ -366,7 +366,7 @@ export const OFFICIAL_ISSUING_COUNTERS: readonly IssuingCounterInfo[] = [
     id: 'Unassigned',
     name: 'Awaiting Counter Assignment',
     location: 'District Police Headquarters',
-    description: 'Pending operational counter allotment and roster allocation',
+    description: 'Pending operational counter allotment and personnel allocation',
   },
 ];
 

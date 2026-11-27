@@ -1,18 +1,18 @@
 import { cleanAadhaarNumber, cleanMobileNumber, validateGovernmentId, validateMobile } from './identity-validation';
-import { policeRosterPhotoUrl, type PoliceRosterRow } from './police-roster-import';
-import type { RosterPicture } from './roster-workbook-photos';
+import { policePersonnelPhotoUrl, type PolicePersonnelRow } from './police-personnel-import';
+import type { PersonnelPicture } from './personnel-workbook-photos';
 
-export type PhotoOverride = { kind: 'choice'; picture: RosterPicture } | { kind: 'replacement'; file: File } | { kind: 'defer' };
+export type PhotoOverride = { kind: 'choice'; picture: PersonnelPicture } | { kind: 'replacement'; file: File } | { kind: 'defer' };
 
 export type ReviewPhoto =
-  | { kind: 'embedded' | 'chosen'; picture: RosterPicture }
+  | { kind: 'embedded' | 'chosen'; picture: PersonnelPicture }
   | { kind: 'replacement'; file: File }
   | { kind: 'link'; url: string }
   | { kind: 'defer' }
-  | { kind: 'review'; message: string; candidates: RosterPicture[] };
+  | { kind: 'review'; message: string; candidates: PersonnelPicture[] };
 
 export function resolveReviewPhoto(
-  row: PoliceRosterRow, override: PhotoOverride | undefined,
+  row: PolicePersonnelRow, override: PhotoOverride | undefined,
 ): ReviewPhoto {
   if (override?.kind === 'choice') return { kind: 'chosen', picture: override.picture };
   if (override) return override;
@@ -21,7 +21,7 @@ export function resolveReviewPhoto(
       ? { kind: 'review', message: row.embeddedPhoto.error, candidates: row.embeddedPhoto.candidates }
       : { kind: 'embedded', picture: row.embeddedPhoto };
   }
-  const url = policeRosterPhotoUrl(row.photoReference);
+  const url = policePersonnelPhotoUrl(row.photoReference);
   if (url) return { kind: 'link', url };
   if (!row.photoReference) return { kind: 'defer' };
   return {
@@ -36,7 +36,7 @@ export function photoBlob(photo: ReviewPhoto): Blob | undefined {
   if ('picture' in photo) return new Blob([new Uint8Array(photo.picture.bytes)], { type: photo.picture.mime });
 }
 
-export function rosterDetailsIssue(row: PoliceRosterRow): string {
+export function personnelDetailsIssue(row: PolicePersonnelRow): string {
   if (!row.record.full_name.trim()) return 'Enter the officer’s full name.';
   try {
     validateMobile(cleanMobileNumber(row.record.mobile_number));

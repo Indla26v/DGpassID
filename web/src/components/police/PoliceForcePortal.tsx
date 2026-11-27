@@ -24,7 +24,9 @@ import { PrintTeamPortal } from '../print/PrintTeamPortal';
 import { PoliceExportPanel } from './PoliceExportPanel';
 import { PoliceDashboard } from './PoliceDashboard';
 import { InstructionsManager } from '../deployment/InstructionsManager';
-import { SectionSidebar, type SidebarSection } from '../common/SectionSidebar';
+import { ScanIssuePanel } from './ScanIssuePanel';
+import { InchargePanel } from '../deployment/InchargePanel';
+import { SectionSidebar, type SidebarEntry } from '../common/SectionSidebar';
 import {
   ShieldCheck,
   Users,
@@ -40,6 +42,11 @@ import {
   FileDown,
   LayoutDashboard,
   ClipboardList,
+  ScanLine,
+  UserCheck,
+  Network,
+  FolderOpen,
+  BookUser,
 } from 'lucide-react';
 
 interface PoliceStats {
@@ -51,22 +58,45 @@ interface PoliceStats {
   districts: string[];
 }
 
+/** Sections that show their own figures (Dashboard) or don't need the force counts (Deployment group). */
+const NO_COUNT_TILES: string[] = ['dashboard', 'selection', 'points', 'incharges'];
+
 export const PoliceForcePortal: React.FC = () => {
   const { user } = useAuth();
   const isOperator = user.role === 'POLICE_PRINT';
   const isSp = user.role === 'ADMIN' && managesAccounts(user);
-  type PoliceSection = 'dashboard' | 'selection' | 'import' | 'points' | 'instructions' | 'print' | 'export' | 'directory';
+  type PoliceSection = 'dashboard' | 'selection' | 'import' | 'points' | 'instructions' | 'incharges' | 'print' | 'scan' | 'export' | 'directory';
   const [activeTab, setActiveTab] = useState<PoliceSection>('directory');
-  // Inner menu: SP sees every section; print operators only the force directory.
-  const sections: SidebarSection<PoliceSection>[] = [
+  // Inner menu: SP sees every section; print operators the force directory and Scan & Issue.
+  const sections: SidebarEntry<PoliceSection>[] = [
     ...(isSp ? [{ id: 'dashboard' as const, label: 'Dashboard', hint: 'Strength by zone, rank, district', Icon: LayoutDashboard }] : []),
-    { id: 'directory', label: 'Bandobast Force', hint: 'Directory, print and issue', Icon: Users },
-    ...(isSp ? [{ id: 'selection' as const, label: 'Officer Selection', hint: 'Pick and allot officers', Icon: Shuffle }] : []),
-    ...(isSp ? [{ id: 'points' as const, label: 'Duty Points', hint: 'Sub-sectors and points', Icon: MapPinned }] : []),
+    // Directory and the ID card print queue under one dropdown for the SP; others only have the directory.
+    ...(isSp ? [{
+      group: 'force', label: 'Bandobast Force', hint: 'Directory and print queue', Icon: Users,
+      items: [
+        { id: 'directory' as const, label: 'Directory', hint: 'Directory, print and issue', Icon: BookUser },
+        { id: 'print' as const, label: 'Print Queue', hint: 'Police ID cards', Icon: Printer },
+      ],
+    }] : [{ id: 'directory' as const, label: 'Bandobast Force', hint: 'Directory, print and issue', Icon: Users }]),
+    // The three steps of deploying the force, in order, under one dropdown.
+    ...(isSp ? [{
+      group: 'deployment', label: 'Deployment', hint: 'Selection, duty points, incharges', Icon: Network,
+      items: [
+        { id: 'selection' as const, label: 'Officer Selection', hint: 'Pick and allot officers', Icon: Shuffle },
+        { id: 'points' as const, label: 'Duty Points', hint: 'Sub-sectors and points', Icon: MapPinned },
+        { id: 'incharges' as const, label: 'Incharges', hint: 'Sector and sub-sector incharges', Icon: UserCheck },
+      ],
+    }] : []),
     ...(isSp ? [{ id: 'instructions' as const, label: 'Instructions', hint: 'Send duty instructions to zones', Icon: ClipboardList }] : []),
-    ...(isSp ? [{ id: 'print' as const, label: 'Print Queue', hint: 'Police ID cards', Icon: Printer }] : []),
-    ...(!isOperator ? [{ id: 'import' as const, label: 'Import', hint: 'Roster upload', Icon: Upload }] : []),
-    ...(isSp ? [{ id: 'export' as const, label: 'Export', hint: 'Filtered roster download', Icon: FileDown }] : []),
+    ...(isSp || isOperator ? [{ id: 'scan' as const, label: 'Scan & Issue', hint: 'Scan ID cards to issue them', Icon: ScanLine }] : []),
+    // Import and Export under one dropdown for the SP; other office admins only have Import, shown on its own.
+    ...(isSp ? [{
+      group: 'documents', label: 'Documents', hint: 'Import and export personnel', Icon: FolderOpen,
+      items: [
+        { id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload },
+        { id: 'export' as const, label: 'Export', hint: 'Filtered personnel download', Icon: FileDown },
+      ],
+    }] : !isOperator ? [{ id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload }] : []),
   ];
   const [recentlyUpdated, setRecentlyUpdated] = useState(false);
 
@@ -238,7 +268,8 @@ export const PoliceForcePortal: React.FC = () => {
     <div className="min-w-0 space-y-4">
       <OperationsHeader title="Police Bandobusth Force" description={isOperator ? 'Print and issue badges for your assigned zones and sectors.' : 'Personnel directory, duty assignments and pass distribution.'} />
 
-      <dl aria-label="Police force activity" className="grid grid-cols-2 gap-2.5 min-[460px]:grid-cols-3 md:grid-cols-5">
+      {/* The force counts are left out where they would repeat the dashboard or are not needed (Deployment). */}
+      {!NO_COUNT_TILES.includes(activeTab) && <dl aria-label="Police force activity" className="grid grid-cols-2 gap-2.5 min-[460px]:grid-cols-3 md:grid-cols-5">
         {metrics.map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="operations-metric">
             <div className="min-w-0">
@@ -250,7 +281,7 @@ export const PoliceForcePortal: React.FC = () => {
             <Icon aria-hidden="true" className={`size-7 shrink-0 rounded-full p-1.5 lg:size-8 ${tone}`} />
           </div>
         ))}
-      </dl>
+      </dl>}
 
       <SectionSidebar title="Police Force" storageKey="section-menu" sections={sections} active={activeTab} onChange={setActiveTab} />
       <div>
@@ -275,7 +306,11 @@ export const PoliceForcePortal: React.FC = () => {
 
       {isSp && activeTab === 'instructions' && <InstructionsManager />}
 
+      {isSp && activeTab === 'incharges' && <InchargePanel />}
+
       {isSp && activeTab === 'print' && <PrintTeamPortal passType="POLICE_FORCE" embedded />}
+
+      {(isSp || isOperator) && activeTab === 'scan' && <ScanIssuePanel />}
 
       {isSp && activeTab === 'export' && <PoliceExportPanel knownDistricts={stats?.districts ?? []} />}
 

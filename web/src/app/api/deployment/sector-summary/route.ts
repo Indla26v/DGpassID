@@ -5,6 +5,7 @@ import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { rankGroupOf } from '@/core/domain/ranks';
 import { schemeColumnOf, schemeRequirement } from '@/core/domain/scheme-requirements';
 import { deploymentScopeOf, sectorRankCounts } from '@/modules/deployment/deployment.repository';
+import { scopeTouches } from '@/core/domain/police-print-scope';
 
 /**
  * Scheme requirement vs officers already allotted, by rank, for one sector (and its sub-sectors).
@@ -21,7 +22,7 @@ export async function GET(req: Request) {
   const sector = zone?.sectors.find(item => item.number === searchParams.get('sector'));
   if (!zone || !sector) return NextResponse.json({ error: 'Choose a zone and sector from the scheme.' }, { status: 400 });
   const scope = deploymentScopeOf(auth.user);
-  if (scope !== 'ALL' && !scope.some(item => item.zone === zone.name && (item.sector === null || item.sector === sector.number))) {
+  if (scope !== 'ALL' && !scopeTouches(scope, zone.name, sector.number)) {
     return NextResponse.json({ error: 'This sector is not assigned to you.' }, { status: 403 });
   }
 

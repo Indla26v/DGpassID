@@ -105,3 +105,48 @@ CREATE TABLE IF NOT EXISTS duty_instructions (
 CREATE INDEX IF NOT EXISTS idx_duty_instructions_status ON duty_instructions (status, updated_at DESC);
 
 COMMIT;
+
+-- Audit labels for police personnel imports: relabel entries written under the older action names.
+UPDATE audit_logs SET action = 'POLICE_PERSONNEL_IMPORT' WHERE action = 'POLICE_ROSTER_IMPORT';
+UPDATE audit_logs SET action = 'POLICE_PERSONNEL_UPDATED',
+       details = replace(details, 'Officer roster record', 'Officer personnel record')
+ WHERE action = 'POLICE_ROSTER_UPDATED';
+
+-- Duty passport details on each duty instruction (all optional).
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS duty_from date;
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS duty_to date;
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS duty_hours varchar(60);
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS security_plan text;
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS place_of_duty varchar(120);
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS signatory text;
+ALTER TABLE duty_instructions DROP CONSTRAINT IF EXISTS duty_instructions_duty_period_check;
+ALTER TABLE duty_instructions ADD CONSTRAINT duty_instructions_duty_period_check
+  CHECK (duty_from IS NULL OR duty_to IS NULL OR duty_to >= duty_from);
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS batch varchar(60);
+
+-- Sector Incharge (one per sector) and Component Officer (one per zone, sector = '') for duty passports.
+CREATE TABLE IF NOT EXISTS deployment_incharges (
+  zone varchar(120) NOT NULL,
+  sector varchar(60) NOT NULL DEFAULT '',
+  pass_id uuid NOT NULL REFERENCES passes(id) ON DELETE CASCADE,
+  assigned_by varchar(255) NOT NULL,
+  assigned_at timestamptz NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (zone, sector)
+);
+CREATE INDEX IF NOT EXISTS idx_deployment_incharges_pass ON deployment_incharges (pass_id);
+
+-- Sub-sector Incharge: one officer per sub-sector (sub_sector = '' for the Sector Incharge itself).
+ALTER TABLE deployment_incharges ADD COLUMN IF NOT EXISTS sub_sector varchar(255) NOT NULL DEFAULT '';
+
+-- Up to 3 officers per sub-sector, in order (position 1 = Sub-sector Incharge).
+ALTER TABLE deployment_incharges ADD COLUMN IF NOT EXISTS position smallint NOT NULL DEFAULT 1;
+ALTER TABLE deployment_incharges DROP CONSTRAINT IF EXISTS deployment_incharges_position_check;
+ALTER TABLE deployment_incharges ADD CONSTRAINT deployment_incharges_position_check CHECK (position BETWEEN 1 AND 3);
+ALTER TABLE deployment_incharges DROP CONSTRAINT IF EXISTS deployment_incharges_pkey;
+ALTER TABLE deployment_incharges ADD CONSTRAINT deployment_incharges_pkey PRIMARY KEY (zone, sector, sub_sector, position);
+
+-- Back side of the duty passport: "Brief Instructions" title and numbered points.
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS back_title varchar(200);
+ALTER TABLE duty_instructions ADD COLUMN IF NOT EXISTS back_points jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE duty_instructions DROP CONSTRAINT IF EXISTS duty_instructions_back_points_check;
+ALTER TABLE duty_instructions ADD CONSTRAINT duty_instructions_back_points_check CHECK (jsonb_typeof(back_points) = 'array');

@@ -3,13 +3,13 @@
 import { FORCE_LABELS, normalizeForce } from '@/core/domain/ranks';
 import React, { useMemo, useRef, useState } from 'react';
 import { PillButton } from '../common/PillButton';
-import { parsePoliceRoster, readPoliceRosterPhoto, type PoliceRosterRow } from '@/lib/police-roster-import';
-import { photoBlob, resolveReviewPhoto, rosterDetailsIssue, type PhotoOverride } from '@/lib/roster-import-review';
-import { cleanAadhaarNumber, DUPLICATE_ROSTER_AADHAAR, repeatedAadhaarNumbers } from '@/lib/identity-validation';
+import { parsePolicePersonnel, readPolicePersonnelPhoto, type PolicePersonnelRow } from '@/lib/police-personnel-import';
+import { photoBlob, resolveReviewPhoto, personnelDetailsIssue, type PhotoOverride } from '@/lib/personnel-import-review';
+import { cleanAadhaarNumber, DUPLICATE_PERSONNEL_AADHAAR, repeatedAadhaarNumbers } from '@/lib/identity-validation';
 import { CollectionPagination } from '../common/CollectionFeedback';
-import { RosterPhotoPreview, RosterRowReview } from './RosterRowReview';
-import { RosterImportHistory } from './RosterImportHistory';
-import type { RosterImportHistoryEntry, RosterImportSummary } from '@/core/domain/roster-import-history';
+import { PersonnelPhotoPreview, PersonnelRowReview } from './PersonnelRowReview';
+import { PersonnelImportHistory } from './PersonnelImportHistory';
+import type { PersonnelImportHistoryEntry, PersonnelImportSummary } from '@/core/domain/personnel-import-history';
 import {
   Upload,
   CheckCircle2,
@@ -27,7 +27,7 @@ interface WaveImportCenterProps {
 }
 
 const PAGE_SIZE = 10;
-const rosterExtensions = '.xlsx,.xls,.csv';
+const personnelExtensions = '.xlsx,.xls,.csv';
 const photoLabels = {
   embedded: 'Embedded', chosen: 'Selected', replacement: 'Replacement',
   link: 'Photo link', defer: 'Desk capture', review: 'Review photo',
@@ -36,15 +36,15 @@ const photoLabels = {
 export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, onViewDirectory }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reviewFileInputRef = useRef<HTMLInputElement>(null);
-  const historyEntryRef = useRef<RosterImportHistoryEntry | null>(null);
+  const historyEntryRef = useRef<PersonnelImportHistoryEntry | null>(null);
   const fingerprintRef = useRef<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [rows, setRows] = useState<PoliceRosterRow[]>([]);
+  const [rows, setRows] = useState<PolicePersonnelRow[]>([]);
   const [photoOverrides, setPhotoOverrides] = useState<Record<number, PhotoOverride | undefined>>({});
   const [excluded, setExcluded] = useState<Set<number>>(() => new Set());
   const [imported, setImported] = useState<Set<number>>(() => new Set());
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
-  const [reviewRow, setReviewRow] = useState<PoliceRosterRow | null>(null);
+  const [reviewRow, setReviewRow] = useState<PolicePersonnelRow | null>(null);
   const [search, setSearch] = useState('');
   const [rowFilter, setRowFilter] = useState<'all' | 'review' | 'remaining'>('all');
   const [resumeNotice, setResumeNotice] = useState('');
@@ -67,8 +67,8 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
     return rows.map(row => {
       const photo = resolveReviewPhoto(row, photoOverrides[row.sourceRow]);
       const duplicate = !excluded.has(row.sourceRow) && duplicates.has(cleanAadhaarNumber(row.record.govt_id_number));
-      const issue = duplicate ? DUPLICATE_ROSTER_AADHAAR
-        : rosterDetailsIssue(row) || (photo.kind === 'review' ? photo.message : '');
+      const issue = duplicate ? DUPLICATE_PERSONNEL_AADHAAR
+        : personnelDetailsIssue(row) || (photo.kind === 'review' ? photo.message : '');
       return { row, photo, issue };
     });
   }, [rows, excluded, photoOverrides]);
@@ -111,7 +111,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
     }
   };
 
-  const loadFile = async (file: File, historyEntry?: RosterImportHistoryEntry | null) => {
+  const loadFile = async (file: File, historyEntry?: PersonnelImportHistoryEntry | null) => {
     resetFileReview(file);
     setIsParsing(true);
     try {
@@ -120,7 +120,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
       const fingerprint = digest
         ? Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
         : null;
-      const parsed = parsePoliceRoster(contents);
+      const parsed = parsePolicePersonnel(contents);
       fingerprintRef.current = fingerprint;
       if (historyEntry) {
         const progress = historyEntry.resume;
@@ -139,13 +139,13 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
       }
       setRows(parsed);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Could not read the roster.');
+      setUploadError(error instanceof Error ? error.message : 'Could not read the personnel file.');
     } finally {
       setIsParsing(false);
     }
   };
 
-  const reopenReview = (entry: RosterImportHistoryEntry) => {
+  const reopenReview = (entry: PersonnelImportHistoryEntry) => {
     historyEntryRef.current = entry;
     reviewFileInputRef.current?.click();
   };
@@ -172,7 +172,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
         body: `{"records":[${batch.map(row => row.json).join(',')}]}`,
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not import the roster.');
+      if (!response.ok) throw new Error(result.error || 'Could not import the personnel file.');
       const failed = new Set<number>();
       for (const error of result.errors as string[]) {
         const match = error.match(/^Row (\d+):\s*(.*)$/s);
@@ -196,7 +196,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
         const photoFile = photoBlob(photo);
         if (photoFile) {
           try {
-            photoUrl = await readPoliceRosterPhoto(photoFile);
+            photoUrl = await readPolicePersonnelPhoto(photoFile);
           } catch {
             errors[sourceRow] = 'The photo could not be read. Upload a JPG, PNG or WebP up to 20 MB.';
             continue;
@@ -225,7 +225,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
       });
       if (created || updated || Object.keys(errors).length) setUploadResult({ created, updated, total: created + updated });
       if (created || updated) onSuccess();
-      const summary: RosterImportSummary = {
+      const summary: PersonnelImportSummary = {
         filename: selectedFile.name,
         detected: rows.length,
         created,
@@ -255,7 +255,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
     }
   };
 
-  const saveRow = (updated: PoliceRosterRow, photoOverride: PhotoOverride | undefined) => {
+  const saveRow = (updated: PolicePersonnelRow, photoOverride: PhotoOverride | undefined) => {
     setRows(current => current.map(item => item.sourceRow === updated.sourceRow ? updated : item));
     setPhotoOverrides(current => ({ ...current, [updated.sourceRow]: photoOverride }));
     setRowErrors(current => {
@@ -278,7 +278,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
           </h3>
         </div>
         <p className="mt-1 text-xs text-slate-500">
-          Import officer proforma details, Bandobusth assignments and photos from one roster.
+          Import officer proforma details, Bandobusth assignments and photos from one personnel file.
         </p>
         </div>
         <PillButton type="button" variant="outline" size="sm" aria-expanded={showHistory}
@@ -287,8 +287,8 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
           {showHistory ? 'Hide history' : 'Import history'}
         </PillButton>
       </div>
-      {showHistory && <RosterImportHistory key={historyRevision} onReview={reopenReview} disabled={isParsing || isUploading} />}
-      <input ref={reviewFileInputRef} type="file" accept={rosterExtensions} hidden
+      {showHistory && <PersonnelImportHistory key={historyRevision} onReview={reopenReview} disabled={isParsing || isUploading} />}
+      <input ref={reviewFileInputRef} type="file" accept={personnelExtensions} hidden
         onChange={event => {
           const file = event.target.files?.[0];
           event.target.value = '';
@@ -303,8 +303,8 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
           <input
             ref={fileInputRef}
             type="file"
-            aria-label="Choose roster file"
-            accept={rosterExtensions}
+            aria-label="Choose personnel file"
+            accept={personnelExtensions}
             disabled={isParsing || isUploading}
             onChange={event => {
               const file = event.target.files?.[0];
@@ -325,8 +325,8 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
             onClick={handleUploadFile}
             icon={isUploading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           >
-            {isUploading ? 'Importing…' : isParsing ? 'Reading roster…' : totalParsedRows > 0
-              ? `Import ${candidates.length} ready ${candidates.length === 1 ? 'row' : 'rows'}` : 'Import roster'}
+            {isUploading ? 'Importing…' : isParsing ? 'Reading personnel file…' : totalParsedRows > 0
+              ? `Import ${candidates.length} ready ${candidates.length === 1 ? 'row' : 'rows'}` : 'Import personnel'}
           </PillButton>
         </div>
 
@@ -341,18 +341,18 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
       </div>
 
       {totalParsedRows > 0 && (
-        <section aria-labelledby="police-roster-review" className="space-y-3">
+        <section aria-labelledby="police-personnel-review" className="space-y-3">
           {resumeNotice && <p className="text-xs text-slate-600" role="status">{resumeNotice}</p>}
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
-              <h4 id="police-roster-review" className="text-sm font-semibold text-police-navy">Review roster</h4>
+              <h4 id="police-personnel-review" className="text-sm font-semibold text-police-navy">Review personnel</h4>
               <p className="mt-1 text-xs text-slate-600" role="status">
                 {candidates.length} ready · {needsReview} to review · {excluded.size} skipped · {imported.size} imported
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label className="relative">
-                <span className="sr-only">Search roster</span>
+                <span className="sr-only">Search personnel</span>
                 <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
                 <input type="search" className="operations-input min-h-8 pl-9" value={search}
                   onChange={event => { setSearch(event.target.value); setPage(0); }}
@@ -408,7 +408,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
                       <td className="px-3 py-2">
                         <button type="button" disabled={isImported || isUploading} aria-label={`Review photograph for row ${sourceRow}`}
                           onClick={() => setReviewRow(row)} className="inline-flex items-center gap-2 rounded-xl text-left hover:text-police-crimson">
-                          <RosterPhotoPreview photo={photo} label={`Photo for ${record.full_name || 'row ' + sourceRow}`} />
+                          <PersonnelPhotoPreview photo={photo} label={`Photo for ${record.full_name || 'row ' + sourceRow}`} />
                           <span>{photoLabels[photo.kind]}</span>
                         </button>
                       </td>
@@ -448,7 +448,7 @@ export const WaveImportCenter: React.FC<WaveImportCenterProps> = ({ onSuccess, o
         </section>
       )}
       {reviewRow && (
-        <RosterRowReview key={reviewRow.sourceRow} row={reviewRow} photoOverride={photoOverrides[reviewRow.sourceRow]}
+        <PersonnelRowReview key={reviewRow.sourceRow} row={reviewRow} photoOverride={photoOverrides[reviewRow.sourceRow]}
           onClose={() => setReviewRow(null)} onSave={saveRow} />
       )}
 

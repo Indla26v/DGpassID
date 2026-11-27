@@ -1,10 +1,10 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 
--- Police roster imports have no campus institution.
+-- Police personnel imports have no campus institution.
 ALTER TABLE passes ALTER COLUMN institution DROP NOT NULL;
 
--- Preserve the existing badge format for records created before the police roster.
+-- Preserve the existing badge format for records created before police personnel records.
 ALTER TABLE passes
     ADD COLUMN IF NOT EXISTS pass_type varchar(32) NOT NULL DEFAULT 'CAMPUS',
     ADD COLUMN IF NOT EXISTS rank varchar(64),

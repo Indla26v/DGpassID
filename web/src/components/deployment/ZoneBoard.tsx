@@ -6,6 +6,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { PillButton } from '../common/PillButton';
 import { CustomSelect } from '../common/CustomSelect';
 import { POLICE_BANDOBUSHT_ZONES, type PoliceSectorItem } from '@/core/domain/police-zones';
+import { limitedSubSectors } from '@/core/domain/police-print-scope';
 import { displayRank, rankGroupOf, rankSeniority } from '@/core/domain/ranks';
 import { requirementTotal, SCHEME_RANK_COLUMNS, schemeColumnOf, schemeRequirement } from '@/core/domain/scheme-requirements';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
@@ -164,7 +165,9 @@ export function ZoneBoard() {
           if (column) byColumn[column] = (byColumn[column] ?? 0) + 1;
           else { const group = rankGroupOf(officer.rank) || 'Unknown'; other[group] = (other[group] ?? 0) + 1; }
         }
-        const groups: (string | null)[] = [...(sector.subSectors ?? []), null];
+        const onlySubs = isSp ? null : limitedSubSectors(scope, zoneName, sector.number);
+        // A sub-sector login sees only its own sub-sectors, not the sector-level officers.
+        const groups: (string | null)[] = onlySubs ? (sector.subSectors ?? []).filter(sub => onlySubs.includes(sub)) : [...(sector.subSectors ?? []), null];
         const open = !collapsed.has(sector.number) || Boolean(text);
 
         return (

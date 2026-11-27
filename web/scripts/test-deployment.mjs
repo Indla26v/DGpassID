@@ -1,5 +1,5 @@
 // Tests the bandobast deployment logic: ASI/HC selection ratios, rank groups, DOB parsing and
-// the lenient roster duty parser. Run from web/:  node scripts/test-deployment.mjs
+// the lenient personnel duty parser. Run from web/:  node scripts/test-deployment.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -28,13 +28,15 @@ const age = await import(pathToFileURL(load('src/lib/officer-age.ts', 'officer-a
 const zones = await import(pathToFileURL(load('src/core/domain/police-zones.ts', 'police-zones.mjs')));
 const req = await import(pathToFileURL(load('src/core/domain/scheme-requirements.ts', 'scheme-requirements.mjs')));
 const sheet = await import(pathToFileURL(load('src/core/domain/deployment-sheet.ts', 'deployment-sheet.mjs')));
-load('src/core/domain/police-print-scope.ts', 'police-print-scope.mjs');
+const scopeLib = await import(pathToFileURL(load('src/core/domain/police-print-scope.ts', 'police-print-scope.mjs')));
 const instr = await import(pathToFileURL(load('src/core/domain/duty-instructions.ts', 'duty-instructions.mjs')));
+const passport = await import(pathToFileURL(load('src/core/domain/duty-passport.ts', 'duty-passport.mjs')));
 
 let seed = 7;
 const random = max => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % max; };
 let passed = 0;
 const test = (name, fn) => { fn(); passed += 1; console.log('ok -', name); };
+const names = ({ sectorIncharge, componentOfficer }) => ({ sectorIncharge, componentOfficer });
 
 test('ASI/HC targets for 200 follow 20/5/70/5 and 40:60 old:young', () => {
   const t = Object.fromEntries(selection.asiHcTargets(200).map(b => [`${b.rank}|${b.band}`, b.target]));
@@ -317,6 +319,278 @@ test('duty instruction visibility follows zone / sector scope', () => {
   assert.equal(instr.instructionVisibleTo(sector1, [{ zone: a.name, sector: 'Other sector' }]), false);
   assert.equal(instr.instructionVisibleTo(whole, [{ zone: b.name, sector: null }]), false);
   assert.equal(instr.instructionVisibleTo(whole, []), false);
+});
+
+test('duty instruction keeps passport details and checks the duty period', () => {
+  const zone2 = zones.POLICE_BANDOBUSHT_ZONES.find(z => z.id === 'ZONE-2');
+  const base = { title: 'T', entries: [{ entity: 'Briefing', date: '', time: '', place: '' }], targets: [{ zone: zone2.name, sector: null }] };
+  const ok = instr.validateInstruction({ ...base, duty_from: '2026-07-18', duty_to: '2026-07-19', duty_hours: ' 5:00 PM -  11:00 AM ',
+    security_plan: 'Bandobast scheme', place_of_duty: 'Tirumala', signatory: 'L Subbarayudu\nSP', batch: '  Batch   II ' });
+  assert.equal(ok.value.batch, 'Batch II');
+  assert.equal(ok.value.duty_hours, '5:00 PM - 11:00 AM');
+  assert.equal(ok.value.signatory, 'L Subbarayudu\nSP');
+  const blank = instr.validateInstruction(base);
+  assert.equal(blank.value.duty_from, '');
+  assert.ok('error' in instr.validateInstruction({ ...base, duty_from: '2026-07-19', duty_to: '2026-07-18' }));
+  assert.ok('error' in instr.validateInstruction({ ...base, duty_from: '2026-13-01' }));
+});
+
+test('duty passport period line leaves out blank parts', () => {
+  const line = details => passport.passportPeriodLine({ duty_from: null, duty_to: null, duty_hours: null, security_plan: null, place_of_duty: null, ...details });
+  assert.equal(line({ duty_from: '2026-07-18', duty_to: '2026-07-19', duty_hours: '5:00 PM - 11:00 AM' }), 'FROM 18-07-2026 (5:00 PM - 11:00 AM) - TO 19-07-2026');
+  assert.equal(line({ duty_from: '2026-07-18', duty_to: '2026-07-18' }), 'ON 18-07-2026');
+  assert.equal(line({ duty_from: '2026-07-18', duty_hours: '06:00 - 14:00' }), 'ON 18-07-2026 (06:00 - 14:00)');
+  assert.equal(line({ duty_to: '2026-07-19' }), 'TO 19-07-2026');
+  assert.equal(line({}), '');
+});
+
+test('duty passport fields follow the posting (sector, sub-sector, point)', () => {
+  const point = zones.allDutyPoints().find(item => item.subSector);
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.name === point.zone);
+  const sector = zone.sectors.find(item => item.number === point.sectorNumber);
+  const officer = { id: 'x', full_name: 'A. Officer', rank: 'wasi', police_id_number: '42', police_zone: zone.name,
+    police_sector_number: sector.number, police_sector_name: point.subSector, police_point_code: point.code, police_point_name: null, qr_payload: null };
+  const details = { duty_from: null, duty_to: null, duty_hours: null, security_plan: 'Scheme', place_of_duty: 'Tirupati', batch: 'Batch I' };
+  const rows = Object.fromEntries(passport.passportFields(officer, details));
+  assert.equal(rows['Component'], `Zone ${zone.number}: ${zone.name}`);
+  assert.equal(rows['Sector Name'], `${sector.number} - ${sector.name}`);
+  assert.equal(rows['Deployment Point'], `${point.subSector} - ${point.name}`);
+  assert.equal(rows['Batch'], 'Batch I');
+  assert.equal(rows['Rank'], ranks.normalizeRank('wasi'));
+  assert.equal(rows['Place of Duty'], 'Tirupati');
+  const sectorOnly = Object.fromEntries(passport.passportFields({ ...officer, police_sector_name: sector.name, police_point_code: null }, details));
+  assert.deepEqual(passport.passportFields(officer, details).map(([label]) => label),
+    ['Name of the officer', 'Rank', 'Gen Number', 'Place of Duty', 'Component', 'Sector Name', 'Deployment Point', 'Batch']);
+  assert.equal(Object.fromEntries(passport.passportFields({ ...officer, police_point_code: null }, details))['Deployment Point'], point.subSector);
+  assert.equal(sectorOnly['Deployment Point'], `${sector.number} (sector duty)`);
+  assert.equal(Object.fromEntries(passport.passportFields({ ...officer, police_id_number: null }, { ...details, place_of_duty: null }))['Gen Number'], '-');
+});
+
+test('duty passport footer names the sector and zone logins', () => {
+  const [a, b] = zones.POLICE_BANDOBUSHT_ZONES;
+  const s1 = a.sectors[0].number;
+  const accounts = [
+    { name: 'Sector officer', scope: [{ zone: a.name, sector: s1 }] },
+    { name: 'Zone officer', scope: [{ zone: a.name, sector: null }] },
+    { name: 'Other zone', scope: [{ zone: b.name, sector: null }] },
+  ];
+  assert.deepEqual(names(passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, accounts)),
+    { sectorIncharge: 'Sector officer', componentOfficer: 'Zone officer' });
+  assert.deepEqual(names(passport.passportIncharges({ police_zone: a.name, police_sector_number: 'Sector 99' }, accounts.slice(2))),
+    { sectorIncharge: passport.NOT_ASSIGNED, componentOfficer: passport.NOT_ASSIGNED });
+});
+
+test('duty passport areas: instruction targets within the login scope', () => {
+  const [a, b] = zones.POLICE_BANDOBUSHT_ZONES;
+  const whole = [{ zone: a.name, sector: null }, { zone: b.name, sector: null }];
+  assert.deepEqual(passport.intersectScopes(whole, 'ALL'), whole);
+  assert.deepEqual(passport.intersectScopes(whole, [{ zone: a.name, sector: 'Sector 1' }]), [{ zone: a.name, sector: 'Sector 1' }]);
+  assert.deepEqual(passport.intersectScopes([{ zone: a.name, sector: 'Sector 2' }], [{ zone: a.name, sector: null }]), [{ zone: a.name, sector: 'Sector 2' }]);
+  assert.deepEqual(passport.intersectScopes([{ zone: a.name, sector: 'Sector 2' }], [{ zone: a.name, sector: 'Sector 1' }]), []);
+  assert.deepEqual(passport.intersectScopes(whole, [{ zone: a.name, sector: null }, { zone: a.name, sector: 'Sector 3' }]), [{ zone: a.name, sector: null }]);
+});
+
+test('scan token comes from the duty ID card QR payload', () => {
+  assert.equal(passport.tokenFromQrPayload('DGPCONF-2026-0807|pv-2026-abc-ap|C. HARI|SI|42|Zone 2|Sector 1'), 'PV-2026-ABC-AP');
+  assert.equal(passport.tokenFromQrPayload('  PV-2026-XYZ-AP \n'), 'PV-2026-XYZ-AP');
+  assert.equal(passport.tokenFromQrPayload(''), '');
+});
+
+test('zone logins may send instructions only inside their own area', () => {
+  const [a, b] = zones.POLICE_BANDOBUSHT_ZONES;
+  const sectorLogin = [{ zone: a.name, sector: 'Sector 1' }];
+  const zoneLogin = [{ zone: a.name, sector: null }];
+  assert.equal(instr.targetsWithinScope([{ zone: a.name, sector: 'Sector 1' }], sectorLogin), true);
+  assert.equal(instr.targetsWithinScope([{ zone: a.name, sector: null }], sectorLogin), false);
+  assert.equal(instr.targetsWithinScope([{ zone: a.name, sector: 'Sector 2' }], sectorLogin), false);
+  assert.equal(instr.targetsWithinScope([{ zone: a.name, sector: null }, { zone: a.name, sector: 'Sector 2' }], zoneLogin), true);
+  assert.equal(instr.targetsWithinScope([{ zone: b.name, sector: null }], zoneLogin), false);
+  assert.equal(instr.targetsWithinScope([], zoneLogin), false);
+});
+
+test('allotted incharges print before login names on the passport', () => {
+  const [a] = zones.POLICE_BANDOBUSHT_ZONES;
+  const s1 = a.sectors[0].number;
+  const accounts = [{ name: 'Sector login', scope: [{ zone: a.name, sector: s1 }] }, { name: 'Zone login', scope: [{ zone: a.name, sector: null }] }];
+  const allotments = [
+    { zone: a.name, sector: s1, full_name: 'K. Ramesh', rank: 'ci', mobile_number: '98765 43210' },
+    { zone: a.name, sector: null, full_name: 'P. Rao', rank: 'DSP', mobile_number: null },
+  ];
+  assert.equal(passport.inchargeLabel(allotments[0]), `${ranks.normalizeRank('ci')} K. Ramesh (9876543210)`);
+  assert.deepEqual(names(passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, accounts, allotments)),
+    { sectorIncharge: passport.inchargeLabel(allotments[0]), componentOfficer: 'DSP P. Rao' });
+  assert.deepEqual(names(passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, accounts, allotments.slice(1))),
+    { sectorIncharge: 'Sector login', componentOfficer: 'DSP P. Rao' });
+});
+
+test('instructions can target sub-sectors', () => {
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.sectors.some(sector => sector.subSectors?.length > 1));
+  const sector = zone.sectors.find(item => item.subSectors?.length > 1);
+  const [subA, subB] = sector.subSectors;
+  const parsed = instr.parseInstructionTargets([
+    { zone: zone.name, sector: sector.number, subSector: subA },
+    { zone: zone.name, sector: sector.number, subSector: subB },
+    { zone: zone.name, sector: sector.number, subSector: subA },
+  ]);
+  assert.deepEqual(parsed, [{ zone: zone.name, sector: sector.number, subSector: subA }, { zone: zone.name, sector: sector.number, subSector: subB }]);
+  // A whole sector replaces its sub-sectors; a whole zone replaces its sectors.
+  assert.deepEqual(instr.parseInstructionTargets([{ zone: zone.name, sector: sector.number, subSector: subA }, { zone: zone.name, sector: sector.number }]),
+    [{ zone: zone.name, sector: sector.number }]);
+  assert.deepEqual(instr.parseInstructionTargets([{ zone: zone.name, sector: sector.number, subSector: subA }, { zone: zone.name, sector: null }]),
+    [{ zone: zone.name, sector: null }]);
+  assert.equal(instr.parseInstructionTargets([{ zone: zone.name, sector: sector.number, subSector: 'Nowhere' }]), null);
+  assert.equal(instr.parseInstructionTargets([{ zone: zone.name, sector: null, subSector: subA }]), null);
+  assert.match(instr.describeTargets(parsed), new RegExp(`${sector.number} \\(`));
+  // Sector login receives it and prints only those sub-sectors; another sector's login does not.
+  assert.equal(instr.instructionVisibleTo(parsed, [{ zone: zone.name, sector: sector.number }]), true);
+  assert.equal(instr.instructionVisibleTo(parsed, [{ zone: zone.name, sector: 'Sector 99' }]), false);
+  assert.equal(instr.targetsWithinScope(parsed, [{ zone: zone.name, sector: sector.number }]), true);
+  assert.deepEqual(passport.intersectScopes(parsed, [{ zone: zone.name, sector: null }]), parsed);
+  assert.deepEqual(passport.intersectScopes([{ zone: zone.name, sector: null }], [{ zone: zone.name, sector: sector.number }]),
+    [{ zone: zone.name, sector: sector.number }]);
+  const checked = instr.validateInstruction({ title: 'T', entries: [{ entity: 'Briefing', date: '', time: '', place: '' }], targets: parsed });
+  assert.deepEqual(checked.value.targets, parsed);
+});
+
+test('passport footer: senior-most officer is Sector Incharge, then the next ranks down to SI', () => {
+  const [a] = zones.POLICE_BANDOBUSHT_ZONES;
+  const s1 = a.sectors[0].number;
+  const at = (id, rank, full_name, mobile_number = '90000 0000' + id) => ({ id, zone: a.name, sector: s1, rank, full_name, mobile_number });
+  const officers = [
+    at('1', 'CI', 'B. Kumar'), at('2', 'CI', 'A. Rao'), at('3', 'Addl. SP', 'Z. Reddy'), at('4', 'dsp', 'M. Naidu'),
+    at('5', 'SI', 'S. Babu'), at('6', 'WSI', 'K. Devi'), at('7', 'ASI', 'P. Raju'), at('8', 'PC', 'R. Das'),
+    { ...at('9', 'SP', 'Other Sector'), sector: 'Sector 99' },
+  ];
+  assert.deepEqual(passport.topRankOfficers(officers).map(o => o.full_name), ['Other Sector', 'Z. Reddy', 'M. Naidu', 'A. Rao', 'S. Babu', 'K. Devi']);
+  assert.equal(passport.isSeniorRank('ASI'), false);
+  assert.equal(passport.isSeniorRank('WSI'), true);
+  const footer = passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, [], [], officers);
+  assert.equal(footer.sectorIncharge, 'Addl. SP Z. Reddy (9000000003)');
+  assert.deepEqual(footer.topOfficers.map(o => [o.rank, o.label]), [
+    ['DSP', 'M. Naidu (9000000004)'], ['CI', 'A. Rao (9000000002)'], ['SI', 'S. Babu (9000000005)'],
+  ]);
+  // Officers chosen by the SP for a sector (without sub-sectors) print exactly as chosen, in order.
+  const chosen = (pass_id, position, rank, full_name) => ({ pass_id, position, zone: a.name, sector: s1, full_name, rank, mobile_number: null });
+  const allotted = passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, [],
+    [chosen('5', 2, 'SI', 'S. Babu'), chosen('2', 1, 'CI', 'A. Rao'), chosen('4', 3, 'DSP', 'M. Naidu')], officers);
+  assert.equal(allotted.sectorIncharge, 'CI A. Rao');
+  assert.deepEqual(allotted.topOfficers.map(o => [o.rank, o.label]), [['SI', 'S. Babu'], ['DSP', 'M. Naidu']]);
+  assert.deepEqual(passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, [], [chosen('2', 1, 'CI', 'A. Rao')], officers).topOfficers, []);
+  // Only ASI and below: no senior officers, so the sector login name is used.
+  const juniors = passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 },
+    [{ name: 'Sector login', scope: [{ zone: a.name, sector: s1 }] }], [], [at('7', 'ASI', 'P. Raju')]);
+  assert.deepEqual([juniors.sectorIncharge, juniors.topOfficers], ['Sector login', []]);
+});
+
+test('passport footer: Sub-sector Incharge for officers posted in a sub-sector', () => {
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.sectors.some(sector => sector.subSectors?.length > 1));
+  const sector = zone.sectors.find(item => item.subSectors?.length > 1);
+  const [subA, subB] = sector.subSectors;
+  const at = (id, rank, full_name, sector_name) => ({ id, zone: zone.name, sector: sector.number, sector_name, rank, full_name, mobile_number: `90000${id}` });
+  const officers = [
+    at('1', 'Addl. SP', 'Head', sector.name), at('2', 'DSP', 'Alpha Dsp', subA), at('3', 'CI', 'Alpha Ci', subA),
+    at('4', 'CI', 'Beta Ci', subB), at('5', 'SI', 'Beta Si', subB),
+  ];
+  const inA = { police_zone: zone.name, police_sector_number: sector.number, police_sector_name: subA };
+  const footer = passport.passportIncharges(inA, [], [], officers);
+  assert.equal(footer.sectorIncharge, 'Addl. SP Head (900001)');
+  assert.equal(footer.subSectorIncharge, 'DSP Alpha Dsp (900002)');
+  // Below it: the rest of that sub-sector's top 3 (here only one more senior officer is posted in 1st sub-sector).
+  assert.deepEqual(footer.topOfficers.map(o => o.label), ['Alpha Ci (900003)']);
+  // Officers on the sector itself still get the next senior ranks of the whole sector.
+  assert.deepEqual(passport.passportIncharges({ ...inA, police_sector_name: sector.name }, [], [], officers).topOfficers.map(o => o.rank), ['DSP', 'CI', 'SI']);
+  // An allotted Sub-sector Incharge replaces the default.
+  const allotted = passport.passportIncharges(inA, [],
+    [{ pass_id: '3', zone: zone.name, sector: sector.number, sub_sector: subA, full_name: 'Alpha Ci', rank: 'CI', mobile_number: null }], officers);
+  assert.equal(allotted.subSectorIncharge, 'CI Alpha Ci');
+  // Officers on the sector itself (no sub-sector) get no Sub-sector Incharge line.
+  assert.equal(passport.passportIncharges({ ...inA, police_sector_name: sector.name }, [], [], officers).subSectorIncharge, null);
+  // A sub-sector with no senior officers shows Not Assigned.
+  assert.equal(passport.passportIncharges({ ...inA, police_sector_name: subB }, [], [], officers.slice(0, 3)).subSectorIncharge, passport.NOT_ASSIGNED);
+});
+
+test('SP allots up to 3 officers per sub-sector, printed in order', () => {
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.sectors.some(sector => sector.subSectors?.length));
+  const sector = zone.sectors.find(item => item.subSectors?.length);
+  const sub = sector.subSectors[0];
+  const at = (id, rank, full_name) => ({ id, zone: zone.name, sector: sector.number, sector_name: sub, rank, full_name, mobile_number: `80000${id}` });
+  const officers = [at('1', 'Addl. SP', 'Senior'), at('2', 'DSP', 'Dee'), at('3', 'CI', 'Cee'), at('4', 'SI', 'Ess'), at('5', 'ASI', 'Junior')];
+  const slot = (pass_id, position, rank, full_name) => ({ pass_id, position, zone: zone.name, sector: sector.number, sub_sector: sub, rank, full_name, mobile_number: null });
+  const officer = { police_zone: zone.name, police_sector_number: sector.number, police_sector_name: sub };
+  // Chosen order is kept; the sector incharge (Senior) is never printed twice.
+  const chosen = [slot('4', 1, 'SI', 'Ess'), slot('3', 2, 'CI', 'Cee'), slot('2', 3, 'DSP', 'Dee')];
+  const footer = passport.passportIncharges(officer, [], chosen, officers);
+  assert.equal(footer.sectorIncharge, 'Addl. SP Senior (800001)');
+  assert.equal(footer.subSectorIncharge, 'SI Ess');
+  assert.deepEqual(footer.topOfficers.map(o => [o.rank, o.label]), [['CI', 'Cee'], ['DSP', 'Dee']]);
+  // Auto pick = first officer of each of the top 3 ranks, SI and above.
+  assert.deepEqual(passport.topRankOfficers(officers).slice(0, passport.SUB_SECTOR_OFFICERS).map(o => o.full_name), ['Senior', 'Dee', 'Cee']);
+  // Without an allotment the same top 3 are used, minus the sector incharge.
+  assert.deepEqual([passport.passportIncharges(officer, [], [], officers).subSectorIncharge, passport.passportIncharges(officer, [], [], officers).topOfficers.map(o => o.rank)],
+    ['DSP Dee (800002)', ['CI', 'SI']]);
+});
+
+test('passport footer: a second officer of the Sector Incharge rank is not listed below', () => {
+  const [a] = zones.POLICE_BANDOBUSHT_ZONES;
+  const s1 = a.sectors[0].number;
+  const at = (id, rank, full_name) => ({ id, zone: a.name, sector: s1, rank, full_name, mobile_number: null });
+  const officers = [at('1', 'Addl. SP', 'I. Rama Krishna'), at('2', 'Addl. SP', 'K. Ravimanohara'), at('3', 'DSP', 'B. Sreenivasulu'),
+    at('4', 'CI', 'E. Venkatesh'), at('5', 'SI', 'S. Babu')];
+  const footer = passport.passportIncharges({ police_zone: a.name, police_sector_number: s1 }, [], [], officers);
+  assert.equal(footer.sectorIncharge, 'Addl. SP I. Rama Krishna');
+  assert.deepEqual(footer.topOfficers.map(o => [o.rank, o.label]), [['DSP', 'B. Sreenivasulu'], ['CI', 'E. Venkatesh'], ['SI', 'S. Babu']]);
+});
+
+test('sub-sector logins: area parsing and coverage', () => {
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.sectors.some(sector => sector.subSectors?.length > 1));
+  const sector = zone.sectors.find(item => item.subSectors?.length > 1);
+  const [subA, subB] = sector.subSectors;
+  const sub = [{ zone: zone.name, sector: sector.number, subSector: subA }];
+  assert.deepEqual(scopeLib.parsePolicePrintScope(sub), sub);
+  assert.equal(scopeLib.parsePolicePrintScope([{ zone: zone.name, sector: sector.number, subSector: 'Nowhere' }]), null);
+  assert.equal(scopeLib.parsePolicePrintScope([{ zone: zone.name, sector: null, subSector: subA }]), null);
+  // A whole sector replaces its sub-sectors.
+  assert.deepEqual(scopeLib.parsePolicePrintScope([...sub, { zone: zone.name, sector: sector.number }]), [{ zone: zone.name, sector: sector.number }]);
+  assert.equal(scopeLib.scopeCovers(sub, zone.name, sector.number, subA), true);
+  assert.equal(scopeLib.scopeCovers(sub, zone.name, sector.number, subB), false);
+  assert.equal(scopeLib.scopeCovers(sub, zone.name, sector.number, null), false);
+  assert.equal(scopeLib.scopeCovers([{ zone: zone.name, sector: sector.number }], zone.name, sector.number, subB), true);
+  assert.equal(scopeLib.scopeTouches(sub, zone.name, sector.number), true);
+  assert.deepEqual(scopeLib.limitedSubSectors(sub, zone.name, sector.number), [subA]);
+  assert.equal(scopeLib.limitedSubSectors([{ zone: zone.name, sector: null }], zone.name, sector.number), null);
+  assert.equal(scopeLib.limitedSubSectors('ALL', zone.name, sector.number), null);
+});
+
+test('sub-sector logins: instructions and passports stay inside their sub-sector', () => {
+  const zone = zones.POLICE_BANDOBUSHT_ZONES.find(item => item.sectors.some(sector => sector.subSectors?.length > 1));
+  const sector = zone.sectors.find(item => item.subSectors?.length > 1);
+  const [subA, subB] = sector.subSectors;
+  const login = [{ zone: zone.name, sector: sector.number, subSector: subA }];
+  const own = [{ zone: zone.name, sector: sector.number, subSector: subA }];
+  assert.equal(instr.targetsWithinScope(own, login), true);
+  assert.equal(instr.targetsWithinScope([{ zone: zone.name, sector: sector.number }], login), false);
+  assert.equal(instr.targetsWithinScope([{ zone: zone.name, sector: sector.number, subSector: subB }], login), false);
+  // Sees whole-zone / whole-sector instructions from the SP, and its own sub-sector's, but not a sibling's.
+  assert.equal(instr.instructionVisibleTo([{ zone: zone.name, sector: null }], login), true);
+  assert.equal(instr.instructionVisibleTo([{ zone: zone.name, sector: sector.number }], login), true);
+  assert.equal(instr.instructionVisibleTo([{ zone: zone.name, sector: sector.number, subSector: subB }], login), false);
+  // Passports from a whole-zone instruction cover only the login's sub-sector.
+  assert.deepEqual(passport.intersectScopes([{ zone: zone.name, sector: null }], login), own);
+  assert.deepEqual(passport.intersectScopes([{ zone: zone.name, sector: sector.number }], login), own);
+  assert.deepEqual(passport.intersectScopes([{ zone: zone.name, sector: sector.number, subSector: subB }], login), []);
+});
+
+test('duty passport back side: points are cleaned and limited', () => {
+  const zone2 = zones.POLICE_BANDOBUSHT_ZONES.find(z => z.id === 'ZONE-2');
+  const base = { title: 'T', entries: [{ entity: 'Briefing', date: '', time: '', place: '' }], targets: [{ zone: zone2.name, sector: null }] };
+  const ok = instr.validateInstruction({ ...base, back_title: '  Brief Instructions – SVBC Watch Tower  ', back_points: ['  Report early. ', '', '   ', 'Stay alert.'] });
+  assert.equal(ok.value.back_title, 'Brief Instructions – SVBC Watch Tower');
+  assert.deepEqual(ok.value.back_points, ['Report early.', 'Stay alert.']);
+  assert.deepEqual(instr.validateInstruction(base).value.back_points, []);
+  assert.ok('error' in instr.validateInstruction({ ...base, back_points: 'not a list' }));
+  assert.ok('error' in instr.validateInstruction({ ...base, back_points: Array.from({ length: 21 }, (_, i) => `Point ${i}`) }));
+  assert.equal(instr.validateInstruction({ ...base, back_points: ['x'.repeat(900)] }).value.back_points[0].length, 400);
+  assert.equal(instr.DEFAULT_BACK_POINTS.length, 10);
 });
 
 fs.rmSync(out, { recursive: true, force: true });

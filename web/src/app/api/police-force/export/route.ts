@@ -8,7 +8,7 @@ import { deploymentScopeOf, listOfficersForExport, type PoliceExportFilters } fr
 import { policeExportCsv, policeExportPdf, policeExportXlsx } from '@/lib/police-export';
 
 /**
- * SP (any zone) or zone/sector officer (own zones and sectors only). Police Force roster with combinable filters:
+ * SP (any zone) or zone/sector officer (own zones and sectors only). Police Force personnel with combinable filters:
  * zones, sector, districts, ranks (rank groups, e.g. "ASI/HC"), force, duty. Multi-value filters repeat the
  * parameter (zones=A&zones=B) because zone and district names can contain commas.
  * format=json returns the count and a preview; csv | xlsx | pdf return a file.
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
   // Zone / sector officers export only inside their own scope.
   const scope = deploymentScopeOf(auth.user);
-  let scopePairs: { zone: string; sector: string | null }[] | undefined;
+  let scopePairs: { zone: string; sector: string | null; subSector?: string | null }[] | undefined;
   if (scope !== 'ALL') {
     const targetZones = chosenZones.length ? chosenZones.map(item => item.name) : [...new Set(scope.map(item => item.zone))];
     scopePairs = [];
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       const zoneScopes = scope.filter(item => item.zone === name);
       if (!zoneScopes.length) return NextResponse.json({ error: 'A chosen zone is not assigned to you.' }, { status: 403 });
       if (zoneScopes.some(item => item.sector === null)) scopePairs.push({ zone: name, sector: null });
-      else zoneScopes.forEach(item => scopePairs!.push({ zone: name, sector: item.sector }));
+      else zoneScopes.forEach(item => scopePairs!.push({ zone: name, sector: item.sector, subSector: item.subSector ?? null }));
     }
     if (sector && zone && !scopePairs.some(pair => pair.zone === zone.name && (pair.sector === null || pair.sector === sector.number))) {
       return NextResponse.json({ error: 'This sector is not assigned to you.' }, { status: 403 });
@@ -102,6 +102,6 @@ export async function GET(req: Request) {
     return new Response(Buffer.from(policeExportPdf(rows, summary)), { headers: headers('application/pdf', 'pdf') });
   } catch (error) {
     console.error('Police export error:', error);
-    return NextResponse.json({ error: 'Could not export the police roster.' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not export the police personnel list.' }, { status: 500 });
   }
 }

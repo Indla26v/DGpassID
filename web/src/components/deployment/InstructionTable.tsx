@@ -36,3 +36,19 @@ export function InstructionTable({ heading, closing, entries, compact = false }:
     </div>
   );
 }
+
+/** The back side of the duty passport (title and numbered points), shown under the reporting table. */
+export function BackSideList({ title, points }: { title: string | null; points: string[] }) {
+  const shown = points.map(point => point.trim()).filter(Boolean);
+  if (!shown.length) return null;
+  return (
+    <details className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3">
+      <summary className="cursor-pointer text-sm font-semibold text-police-navy">
+        Back side: {title?.trim() || 'Brief Instructions'} <span className="font-normal text-slate-500">({shown.length} points)</span>
+      </summary>
+      <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-800">
+        {shown.map((point, index) => <li key={index}>{point}</li>)}
+      </ol>
+    </details>
+  );
+}

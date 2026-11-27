@@ -1,8 +1,8 @@
 type WorkbookPart = { content?: Uint8Array | string };
 type WorkbookParts = Record<string, WorkbookPart>;
 
-export type RosterPicture = { bytes: Uint8Array; mime: string };
-export type EmbeddedRosterPhoto = RosterPicture | { error: string; candidates: RosterPicture[] };
+export type PersonnelPicture = { bytes: Uint8Array; mime: string };
+export type EmbeddedPersonnelPhoto = PersonnelPicture | { error: string; candidates: PersonnelPicture[] };
 
 const imageMime = new Map([
   ['jpg', 'image/jpeg'], ['jpeg', 'image/jpeg'], ['png', 'image/png'], ['webp', 'image/webp'],
@@ -53,10 +53,10 @@ const child = (node: Element, name: string) => Array.from(node.children).find(it
 const relatedId = (node: Element, name: string) =>
   Array.from(node.attributes).find(attribute => attribute.localName === name && attribute.namespaceURI)?.value ?? '';
 
-export function readEmbeddedRosterPhotos(
+export function readEmbeddedPersonnelPhotos(
   files: WorkbookParts | undefined, sheetName: string, photoColumn: number, sourceRows: ReadonlySet<number>,
-): Map<number, EmbeddedRosterPhoto> {
-  const results = new Map<number, EmbeddedRosterPhoto>();
+): Map<number, EmbeddedPersonnelPhoto> {
+  const results = new Map<number, EmbeddedPersonnelPhoto>();
   if (!files || typeof DOMParser === 'undefined') return results;
 
   const workbookPath = 'xl/workbook.xml';
@@ -69,7 +69,7 @@ export function readEmbeddedRosterPhotos(
   const worksheet = packageXml(files, sheetPath);
   if (!worksheet) return results;
   const drawings = relationships(files, sheetPath, 'drawing');
-  const picturesByRow = new Map<number, { candidates: RosterPicture[]; unreadable: boolean }>();
+  const picturesByRow = new Map<number, { candidates: PersonnelPicture[]; unreadable: boolean }>();
 
   for (const drawing of Array.from(byName(worksheet, 'drawing'))) {
     const drawingPath = drawings.get(relatedId(drawing, 'id'));

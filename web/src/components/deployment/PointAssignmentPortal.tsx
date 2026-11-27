@@ -8,6 +8,7 @@ import { OperationsHeader } from '../common/OperationsHeader';
 import { PillButton } from '../common/PillButton';
 import { CustomSelect } from '../common/CustomSelect';
 import { dutyPointsFor, POLICE_BANDOBUSHT_ZONES, type PoliceSectorItem } from '@/core/domain/police-zones';
+import { limitedSubSectors } from '@/core/domain/police-print-scope';
 import { displayRank, FORCE_CATEGORIES, FORCE_LABELS, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
 
@@ -45,7 +46,11 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
 
   const activeSector = sectorFilter || (sectors.length === 1 ? sectors[0].number : '');
   // Sub-sectors of the chosen sector (the Sub-sector filter appears only when there are some).
-  const activeSubSectors = sectors.find(item => item.number === activeSector)?.subSectors ?? [];
+  const allowedSubs = (sectorNumber: string | undefined, subs: string[]) => {
+    const only = isSp || !sectorNumber ? null : limitedSubSectors(scope, zoneName, sectorNumber);
+    return only ? subs.filter(sub => only.includes(sub)) : subs;
+  };
+  const activeSubSectors = allowedSubs(activeSector, sectors.find(item => item.number === activeSector)?.subSectors ?? []);
   const selectedSubSector = node?.sector === activeSector && node.subSector && activeSubSectors.includes(node.subSector) ? node.subSector : '';
 
   const load = useCallback(async () => {
@@ -105,7 +110,9 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
   }, [officers, node, placement, rankFilter, forceFilter, query, zone]);
 
   const targetSector = sectorByNumber(target.sector || activeSector || node?.sector);
-  const targetSubSectors = targetSector?.subSectors ?? [];
+  const targetSubSectors = allowedSubs(targetSector?.number, targetSector?.subSectors ?? []);
+  // A sub-sector login must post inside one of its sub-sectors, so "No sub-sector" is not offered.
+  const subSectorRequired = Boolean(targetSector && !isSp && limitedSubSectors(scope, zoneName, targetSector.number));
   const targetPoints = targetSector
     ? dutyPointsFor(zoneName, targetSector.number, targetSubSectors.length ? (target.subSector || null) : undefined)
     : [];
@@ -329,7 +336,7 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
                 <span aria-hidden="true" className="block text-xs font-semibold text-slate-700">Sub-sector</span>
                 <CustomSelect ariaLabel="Post to sub-sector" wrapValue searchable value={target.subSector}
                   onChange={value => setTarget(current => ({ ...current, sector: targetSector?.number ?? '', subSector: value, point: '' }))}
-                  options={[{ value: '', label: 'No sub-sector' }, ...targetSubSectors.map(item => ({ value: item, label: item }))]} />
+                  options={[{ value: '', label: subSectorRequired ? 'Choose a sub-sector' : 'No sub-sector' }, ...targetSubSectors.map(item => ({ value: item, label: item }))]} />
               </div>
             )}
             <div className={`min-w-0 space-y-1 ${targetSubSectors.length ? '' : 'sm:col-span-2'}`}>

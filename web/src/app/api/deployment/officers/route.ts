@@ -3,6 +3,7 @@ import { authorizeRequest } from '@/lib/auth/session-helper';
 import { managesAccounts } from '@/core/domain/offices';
 import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { deploymentScopeOf, listAllottedOfficers } from '@/modules/deployment/deployment.repository';
+import { scopeTouches } from '@/core/domain/police-print-scope';
 
 /** Officers allotted to a zone (optionally one sector) that the SP or zone/sector officer manages. */
 export async function GET(req: Request) {
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Choose a zone and sector from the scheme.' }, { status: 400 });
   }
   const scope = deploymentScopeOf(auth.user);
-  if (scope !== 'ALL' && !scope.some(item => item.zone === zone.name && (item.sector === null || !sectorNumber || item.sector === sectorNumber))) {
+  if (scope !== 'ALL' && !scopeTouches(scope, zone.name, sectorNumber)) {
     return NextResponse.json({ error: 'This zone or sector is not assigned to you.' }, { status: 403 });
   }
 

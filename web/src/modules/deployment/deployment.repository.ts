@@ -1,6 +1,6 @@
 /**
  * Deployment service — data access for SP selection, allotment and duty-point assignment.
- * Reads and writes officer duty columns on `passes` (owned by the personnel/roster service today)
+ * Reads and writes officer duty columns on `passes` (owned by the personnel service today)
  * and its own `deployment_batches` table.
  */
 import { query, withTransaction } from '@/infrastructure/db/pool';
@@ -133,7 +133,8 @@ function scopeCondition(actor: SessionUser, params: unknown[]): string {
     SELECT 1 FROM app_users u CROSS JOIN LATERAL jsonb_array_elements(u.police_print_scope) AS assignment
      WHERE u.id = $${params.length} AND u.role = 'BANDOBAST_OFFICER' AND u.is_active
        AND assignment->>'zone' = passes.police_zone
-       AND (assignment->>'sector' IS NULL OR assignment->>'sector' = passes.police_sector_number))`;
+       AND (assignment->>'sector' IS NULL OR assignment->>'sector' = passes.police_sector_number)
+       AND (NULLIF(assignment->>'subSector', '') IS NULL OR assignment->>'subSector' = passes.police_sector_name))`;
 }
 
 /** Officers allotted inside the given zone (and optionally sector) that the actor may manage. */
@@ -203,8 +204,8 @@ export interface PoliceExportFilters {
   zone?: string;
   /** Any of these zones (multi-select). */
   zones?: string[];
-  /** Zone / sector officer scope: rows must fall in one of these (sector null = whole zone). */
-  scopePairs?: { zone: string; sector: string | null }[];
+  /** Zone / sector / sub-sector officer scope: rows must fall in one of these (sector null = whole zone). */
+  scopePairs?: { zone: string; sector: string | null; subSector?: string | null }[];
   sectorNumber?: string;
   /** Limit to these sectors (zone/sector officers without a whole-zone scope). */
   sectorNumbers?: string[];
@@ -232,7 +233,10 @@ export async function listOfficersForExport(filters: PoliceExportFilters, limit 
       const zoneParam = `$${params.length}`;
       if (pair.sector === null) return `police_zone = ${zoneParam}`;
       params.push(pair.sector);
-      return `(police_zone = ${zoneParam} AND police_sector_number = $${params.length})`;
+      const sectorParam = `$${params.length}`;
+      if (!pair.subSector) return `(police_zone = ${zoneParam} AND police_sector_number = ${sectorParam})`;
+      params.push(pair.subSector);
+      return `(police_zone = ${zoneParam} AND police_sector_number = ${sectorParam} AND police_sector_name = $${params.length})`;
     });
     where.push(`(${parts.join(' OR ')})`);
   }

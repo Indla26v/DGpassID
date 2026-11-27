@@ -29,6 +29,8 @@ export interface PoliceDashboard {
   byGender: { label: string; count: number }[];
   byRank: { label: string; count: number }[];
   districtRanks: { district: string; counts: ColumnCounts; total: number }[];
+  /** Every district / unit with officers (not narrowed by the filters), for the District filter. */
+  districtOptions: string[];
 }
 
 interface GroupRow {
@@ -58,11 +60,15 @@ const addRequirement = (into: RankRequirement, from?: RankRequirement | null) =>
 };
 const hasValues = (requirement: RankRequirement) => Object.values(requirement).some(Boolean);
 
-export async function loadPoliceDashboard(filters: { force?: string; zone?: string }): Promise<PoliceDashboard> {
+export async function loadPoliceDashboard(filters: { force?: string; zone?: string; district?: string }): Promise<PoliceDashboard> {
   const params: unknown[] = [];
   const where = ["pass_type = 'POLICE_FORCE'", "status <> 'REVOKED'"];
   if (filters.force) { params.push(filters.force); where.push(`force_category = $${params.length}`); }
   if (filters.zone) { params.push(filters.zone); where.push(`police_zone = $${params.length}`); }
+  if (filters.district) { params.push(filters.district.toLowerCase()); where.push(`LOWER(${policeDistrictSql}) = $${params.length}`); }
+  const districtList = await query<{ district: string }>(
+    `SELECT DISTINCT ${policeDistrictSql} AS district FROM passes WHERE pass_type = 'POLICE_FORCE' AND status <> 'REVOKED' ORDER BY 1`,
+  );
   const res = await query<GroupRow>(
     `SELECT NULLIF(BTRIM(police_zone), '') AS police_zone, police_sector_number, police_sector_name, rank,
             ${policeDistrictSql} AS district, force_category, gender,
@@ -153,5 +159,6 @@ export async function loadPoliceDashboard(filters: { force?: string; zone?: stri
     districtRanks: [...districtCells.entries()]
       .map(([district, counts]) => ({ district, counts, total: sum(counts) }))
       .sort((a, b) => b.total - a.total || a.district.localeCompare(b.district)),
+    districtOptions: districtList.rows.map(row => row.district.trim()).filter(Boolean),
   };
 }

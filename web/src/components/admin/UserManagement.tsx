@@ -11,7 +11,8 @@ import { useAuth } from '@/auth/AuthProvider';
 import type { UserRole } from '@/core/domain/entities/user.entity';
 import type { PolicePrintScope } from '@/core/domain/police-print-scope';
 import { PolicePrintScopePicker } from './PolicePrintScopePicker';
-import { Check, Copy, Pencil, RefreshCw } from 'lucide-react';
+import { Check, Copy, Pencil, RefreshCw, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 /** 12-character password with upper, lower, digit and symbol; ambiguous characters (0/O, 1/l/I) left out. */
 const PASSWORD_SETS = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '@#$%&*?!'];
@@ -46,9 +47,9 @@ function PoliceAssignments({ scope }: { scope: PolicePrintScope[] }) {
   if (!scope.length) return <span className="text-slate-500">Unassigned</span>;
 
   const byZone = new Map<string, string[]>();
-  for (const { zone, sector } of scope) {
+  for (const { zone, sector, subSector } of scope) {
     const sectors = byZone.get(zone) ?? [];
-    sectors.push(sector ?? 'All sectors');
+    sectors.push(sector ? (subSector ? `${sector} · ${subSector}` : sector) : 'All sectors');
     byZone.set(zone, sectors);
   }
 
@@ -305,16 +306,35 @@ export const UserManagement: React.FC = () => {
         </PillButton>
       </form>
 
-      {editingScope && (
-        <form className="operations-panel space-y-3 p-4" onSubmit={saveScope}>
-          <h3 className="font-semibold text-police-navy">Zone / sector assignments for {editingScope.name}</h3>
-          <PolicePrintScopePicker value={editingScope.scope}
-            onChange={scope => setEditingScope(current => current && { ...current, scope })} />
-          <div className="flex flex-wrap gap-2">
-            <PillButton type="submit" variant="crimson" disabled={loading || !editingScope.scope.length}>Save assignments</PillButton>
-            <PillButton type="button" variant="outline" disabled={loading} onClick={() => setEditingScope(null)}>Cancel</PillButton>
-          </div>
-        </form>
+      {editingScope && createPortal(
+        <div className="no-print fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-3 sm:p-5"
+          onMouseDown={event => { if (event.target === event.currentTarget && !loading) setEditingScope(null); }}>
+          <form role="dialog" aria-modal="true" aria-labelledby="edit-assignments-title" onSubmit={saveScope}
+            onKeyDown={event => { if (event.key === 'Escape' && !loading) setEditingScope(null); }}
+            className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+            <header className="flex items-center justify-between gap-3 bg-police-navy px-5 py-4 text-white">
+              <div className="min-w-0">
+                <p className="text-xs text-slate-300">Edit assignments</p>
+                <h3 id="edit-assignments-title" className="truncate text-lg font-semibold">{editingScope.name}</h3>
+              </div>
+              <button type="button" onClick={() => setEditingScope(null)} disabled={loading} aria-label="Close"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20">
+                <X className="size-4" />
+              </button>
+            </header>
+            <div className="min-h-[18rem] flex-1 space-y-3 overflow-y-auto p-4 sm:p-5">
+              <PolicePrintScopePicker value={editingScope.scope}
+                onChange={scope => setEditingScope(current => current && { ...current, scope })} />
+              {!editingScope.scope.length && <p className="text-xs text-amber-800">Add at least one zone, sector or sub-sector.</p>}
+              {error && <p role="alert" className="text-sm text-rose-800">{error}</p>}
+            </div>
+            <footer className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-4 py-3 sm:px-5">
+              <PillButton type="button" variant="outline" disabled={loading} onClick={() => setEditingScope(null)}>Cancel</PillButton>
+              <PillButton type="submit" variant="crimson" disabled={loading || !editingScope.scope.length}>{loading ? 'Saving…' : 'Save assignments'}</PillButton>
+            </footer>
+          </form>
+        </div>,
+        document.body,
       )}
       <div role="region" aria-label="Team accounts" tabIndex={0} className="operations-panel overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">

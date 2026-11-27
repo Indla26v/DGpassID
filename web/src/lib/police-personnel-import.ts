@@ -3,7 +3,7 @@ import { parsePoliceDutyAssignment } from '@/core/domain/police-zones';
 import { normalizeRank } from '@/core/domain/ranks';
 import { parseAgeYears, parseDateOfBirth } from './officer-age';
 import { formatPhotoUrl } from './identity-validation';
-import { readEmbeddedRosterPhotos } from './roster-workbook-photos';
+import { readEmbeddedPersonnelPhotos } from './personnel-workbook-photos';
 
 const columns = {
   full_name: ['Full Name', 'Name', 'Officer Name', 'Personnel Name'],
@@ -30,7 +30,7 @@ const columns = {
 
 // "Zone (optional)" and "Zone" are the same column.
 const normalizeHeader = (value: unknown) => String(value ?? '').toLowerCase().replace(/\(\s*optional\s*\)/g, '').replace(/[^a-z0-9]/g, '');
-export function parsePoliceRoster(buffer: ArrayBuffer) {
+export function parsePolicePersonnel(buffer: ArrayBuffer) {
   const workbook = XLSX.read(buffer, { type: 'array', raw: true, bookFiles: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
@@ -95,16 +95,16 @@ export function parsePoliceRoster(buffer: ArrayBuffer) {
   });
   if (!results.length) throw new Error('The spreadsheet contains no officer rows.');
   if (results.length > 5000) throw new Error('Import at most 5000 records at once.');
-  const files = (workbook as XLSX.WorkBook & { files?: Parameters<typeof readEmbeddedRosterPhotos>[0] }).files;
-  const photos = photoIndex < 0 || !files ? undefined : readEmbeddedRosterPhotos(
+  const files = (workbook as XLSX.WorkBook & { files?: Parameters<typeof readEmbeddedPersonnelPhotos>[0] }).files;
+  const photos = photoIndex < 0 || !files ? undefined : readEmbeddedPersonnelPhotos(
     files, sheetName, start.c + photoIndex, new Set(results.map(row => row.sourceRow)),
   );
   return results.map(row => ({ ...row, embeddedPhoto: photos?.get(row.sourceRow) }));
 }
 
-export type PoliceRosterRow = ReturnType<typeof parsePoliceRoster>[number] & { dutyEdited?: boolean };
+export type PolicePersonnelRow = ReturnType<typeof parsePolicePersonnel>[number] & { dutyEdited?: boolean };
 
-export function policeRosterPhotoUrl(reference: string) {
+export function policePersonnelPhotoUrl(reference: string) {
   if (!/^https?:\/\//i.test(reference)) return undefined;
   try {
     const url = new URL(reference);
@@ -115,7 +115,7 @@ export function policeRosterPhotoUrl(reference: string) {
   }
 }
 
-export async function readPoliceRosterPhoto(file: Blob) {
+export async function readPolicePersonnelPhoto(file: Blob) {
   if (file.size > 20 * 1024 * 1024) throw new Error('The photo exceeds 20 MB.');
   const image = await createImageBitmap(file);
   try {

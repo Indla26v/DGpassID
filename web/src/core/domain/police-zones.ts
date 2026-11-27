@@ -384,7 +384,7 @@ export function resolveDutyPosting(zoneName?: string | null, sectorNumber?: stri
 }
 
 /* ------------------------------------------------------------------ */
-/* Lenient duty parsing for roster import                              */
+/* Lenient duty parsing for personnel import                              */
 /* ------------------------------------------------------------------ */
 
 export interface ParsedDutyAssignment {
@@ -412,7 +412,7 @@ const findSubSector = (sector: PoliceSectorItem, value: string) => {
 };
 
 /**
- * Resolves zone → sector → sub-sector → point from roster cells as deeply as they allow.
+ * Resolves zone → sector → sub-sector → point from imported cells as deeply as they allow.
  * Blank cells are fine (no duty). Unrecognised cells never block the row: they are dropped
  * and reported in dutyWarning.
  */

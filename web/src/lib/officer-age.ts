@@ -1,4 +1,4 @@
-/** Officer age helpers for roster import and the ASI/HC old:young selection ratio. */
+/** Officer age helpers for personnel import and the ASI/HC old:young selection ratio. */
 
 export const DEFAULT_AGE_CUTOFF_YEARS = 45;
 

@@ -3,7 +3,7 @@ import { services } from '@/core/services/service-container';
 import { authorizeRequest } from '@/lib/auth/session-helper';
 import {
   validateMobile, validateGovernmentId, cleanMobileNumber, cleanAadhaarNumber,
-  DUPLICATE_ROSTER_AADHAAR, repeatedAadhaarNumbers,
+  DUPLICATE_PERSONNEL_AADHAAR, repeatedAadhaarNumbers,
 } from '@/lib/identity-validation';
 import { canImportDistrictProforma } from '@/core/domain/offices';
 import { normalizeDistrict } from '@/core/domain/districts';
@@ -155,7 +155,7 @@ export async function POST(req: Request) {
           const aadhaar = cleanAadhaarNumber(String(record.govt_id_number ?? ''));
           validateMobile(mobile);
           validateGovernmentId('Aadhaar', aadhaar);
-          if (duplicateAadhaar.has(aadhaar)) throw new Error(DUPLICATE_ROSTER_AADHAAR);
+          if (duplicateAadhaar.has(aadhaar)) throw new Error(DUPLICATE_PERSONNEL_AADHAAR);
 
           const sanitized = sanitizePassInput(record, true);
           sanitized.full_name = (record.full_name || '').toString().trim().toUpperCase();
