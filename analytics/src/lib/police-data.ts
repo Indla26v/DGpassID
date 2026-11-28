@@ -132,20 +132,20 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
     number: 1,
     name: 'International Airport, Renigunta',
     subtitle: 'Airport Reception, Terminals & VIP Movements',
-    totalAllocation: 178,
-    sectors: [{ number: 'Sector 1', name: 'International Airport, Renigunta', allocation: 178 }],
+    totalAllocation: 175,
+    sectors: [{ number: 'Sector 1', name: 'International Airport, Renigunta', allocation: 175 }],
   },
   {
     id: 'ZONE-2',
     number: 2,
     name: 'Venues',
-    subtitle: 'IISER, IIT, Srivari Temple',
-    totalAllocation: 731,
+    subtitle: 'IISER and IIT',
+    totalAllocation: 476,
     sectors: [
       {
         number: 'Sector 1',
         name: 'IISER and its surroundings',
-        allocation: 374,
+        allocation: 353,
         subSectors: [
           '1(A) IISER main gate and inside',
           '1(B) IISER inside Parking area',
@@ -157,7 +157,6 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
         ],
       },
       { number: 'Sector 2', name: 'IIT, Tirupati', allocation: 123 },
-      { number: 'Sector 3', name: 'Srivari Temple, Tirumala', allocation: 234 },
     ],
   },
   {
@@ -165,29 +164,26 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
     number: 3,
     name: 'Routes',
     subtitle: 'Airport to IISER & IISER to Tirumala',
-    totalAllocation: 882,
+    totalAllocation: 441,
     sectors: [
       {
         number: 'Sector 1',
         name: 'Route from Airport to IISER',
-        allocation: 422,
+        allocation: 441,
         subSectors: [
           '1(A) Route BB from Jinkalamitta to Seetharampeta fly over Junction',
           '1(B) Route BB from Culvert Near Seetharampeta fly over Junction to IISER',
           '1(C) Route Mobiles (2 shifts)',
         ],
       },
-      { number: 'Sector 2', name: 'Route Bandobust from Guttivaripalli cross to Sahaya College (Daminedu)', allocation: 96 },
-      { number: 'Sector 3', name: "Route from Daminedu 'U' turn to Garuda Circle", allocation: 289 },
-      { number: 'Sector 4', name: 'Garuda Arch, Tirupati to GNC toll gate, Tirumala', allocation: 75 },
     ],
   },
   {
     id: 'ZONE-4',
     number: 4,
     name: 'Traffic',
-    subtitle: 'Tirupati and Tirumala Traffic Component',
-    totalAllocation: 435,
+    subtitle: 'Tirupati Traffic Component',
+    totalAllocation: 357,
     sectors: [
       { number: 'Sector 1', name: 'Airport to IISER', allocation: 80 },
       { number: 'Sector 2', name: 'Airport to IIT', allocation: 24 },
@@ -205,7 +201,6 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
       { number: 'Sector 14', name: 'Annamayya Junction - RC puram Junction' },
       { number: 'Sector 15', name: 'Cherlopalli Junction - Omega Hospital Upparapalli Circle', allocation: 6 },
       { number: 'Sector 16', name: 'Garuda Circle To Sri Venkateswara Agriculture University', allocation: 31 },
-      { number: 'Sector 17', name: 'Tirumala Traffic component', allocation: 78 },
     ],
   },
   {
@@ -213,13 +208,13 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
     number: 5,
     name: 'Accommodations/Stay Places',
     subtitle: 'ICI & SV Alumni Guest Houses, Private Hotels and Homestays',
-    totalAllocation: 427,
+    totalAllocation: 143,
     sectors: [
       { number: 'Sector 1', name: 'ICI & SV Alumni Guest Houses', allocation: 24 },
       {
         number: 'Sector 2',
         name: 'Hotels and Homestays',
-        allocation: 133,
+        allocation: 119,
         subSectors: [
           'ICI',
           'SVAC',
@@ -236,7 +231,6 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
           'OTHERS',
         ],
       },
-      { number: 'Sector 3', name: 'Places of Stay at Tirumala', allocation: 270 },
     ],
   },
   {
@@ -244,10 +238,10 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
     number: 6,
     name: 'ICCC, Sub-Controls & Essentials',
     subtitle: 'Integrated Command and Control Center & Liaison',
-    totalAllocation: 576,
+    totalAllocation: 506,
     sectors: [
       { number: 'Sector 1', name: 'IIT-Integrated control room (ICCC) old library', allocation: 34 },
-      { number: 'Sector 2', name: 'Sub-Controls', allocation: 393 },
+      { number: 'Sector 2', name: 'Sub-Controls', allocation: 323 },
       { number: 'Sector 3', name: 'Liaison - Essential Service Dept.', allocation: 149 },
     ],
   },
@@ -256,13 +250,12 @@ export const OFFICIAL_BANDOBUSHT_ZONES: readonly PoliceZoneTaxonomy[] = [
     number: 7,
     name: 'Contingency Plan',
     subtitle: 'Contingency Routes, Hospitals, Safe Houses & Reserve Force',
-    totalAllocation: 487,
+    totalAllocation: 460,
     sectors: [
-      { number: 'Sector 1', name: 'Contingency route', allocation: 121 },
+      { number: 'Sector 1', name: 'Contingency route', allocation: 112 },
       { number: 'Sector 2', name: 'Contingency Hospitals', allocation: 33 },
       { number: 'Sector 3', name: 'Safe Houses', allocation: 21 },
-      { number: 'Sector 4', name: 'Lodges/Hotels/Homestays Checking/ Night Patrols & Vehicle checking', allocation: 97 },
-      { number: 'Sector 5', name: 'Reserve Force', allocation: 215 },
+      { number: 'Sector 4', name: 'Reserve Force & Tirumala Protocol', allocation: 294 },
     ],
   },
   {

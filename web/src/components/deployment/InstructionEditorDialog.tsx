@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowDown, ArrowUp, CalendarCheck, Check, ChevronDown, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import { PillButton } from '../common/PillButton';
@@ -8,7 +8,7 @@ import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
 import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { limitedSubSectors, type PolicePrintScope } from '@/core/domain/police-print-scope';
 import {
-  DEFAULT_BACK_POINTS, DEFAULT_BACK_TITLE, DEFAULT_CLOSING, DEFAULT_HEADING, DEFAULT_INSTRUCTION_ENTRIES, displayDate, MAX_BACK_POINTS, MAX_ENTRIES,
+  DEFAULT_BACK_POINTS, DEFAULT_BACK_TITLE, DEFAULT_CLOSING, DEFAULT_HEADING, DEFAULT_INSTRUCTION_ENTRIES, backPointsToText, backTextToPoints, defaultInstructionTitle, displayDate, MAX_ENTRIES,
   type InstructionEntry, type InstructionTarget,
 } from '@/core/domain/duty-instructions';
 import { DEFAULT_SIGNATORY_DESIGNATION } from '@/core/domain/duty-passport';
@@ -22,7 +22,6 @@ const field = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text
 const label = 'block text-xs font-semibold text-slate-700';
 const hint = 'font-normal text-slate-500';
 const iconButton = 'grid size-8 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-30';
-const HOURS_PRESETS = ['06:00 AM - 10:00 PM', '05:00 PM - 11:00 AM', '24 hours'];
 const PLACE_SUGGESTIONS = ['At assigned Point of Duty', 'Police Parade Grounds, Tirupati', 'Police Complex, Tirumala'];
 
 function Step({ number, title, description, done, children }: {
@@ -99,14 +98,9 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
   const setPassportField = (key: keyof typeof passport, value: string) => setPassport(previous => ({ ...previous, [key]: value }));
   // Back side of the passport: new instructions start with the standard Brief Instructions.
   const [backTitle, setBackTitle] = useState(instruction ? instruction.back_title ?? '' : DEFAULT_BACK_TITLE);
-  const [backPoints, setBackPoints] = useState<string[]>(instruction ? [...(instruction.back_points ?? [])] : [...DEFAULT_BACK_POINTS]);
-  const updatePoint = (index: number, value: string) => setBackPoints(previous => previous.map((point, i) => (i === index ? value : point)));
-  const movePoint = (index: number, by: number) => setBackPoints(previous => {
-    const next = [...previous];
-    const [point] = next.splice(index, 1);
-    next.splice(index + by, 0, point);
-    return next;
-  });
+  // Typed or pasted as one block of text; each line becomes a point.
+  const [backText, setBackText] = useState(backPointsToText(instruction ? instruction.back_points ?? [] : DEFAULT_BACK_POINTS));
+  const backPoints = useMemo(() => backTextToPoints(backText), [backText]);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -137,6 +131,8 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
     : singleZone && sectorNumbers.length
     ? sectorNumbers.flatMap(sector => sectorArea(singleZone.name, sector))
     : zoneNames.length ? allowedZones.filter(zone => zoneNames.includes(zone.name)).flatMap(areaOf) : everything;
+  // Used when no title is typed (the server names the instruction the same way).
+  const autoTitle = defaultInstructionTitle(targets, passport.duty_from, passport.duty_to);
   const filledEntries = entries.filter(entry => entry.entity.trim() || entry.date || entry.time || entry.place.trim());
 
   const update = (index: number, key: keyof InstructionEntry, value: string) =>
@@ -152,11 +148,10 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
 
   // What is still needed before saving, shown in the footer.
   const missing = [
-    !title.trim() && 'a title',
     !filledEntries.some(entry => entry.entity.trim()) && 'at least one report entity',
     editing && !note.trim() && 'what changed',
   ].filter(Boolean) as string[];
-  const passportGaps = [!passport.duty_from && 'duty dates', !passport.place_of_duty.trim() && 'place of duty']
+  const passportGaps = [!passport.duty_from && 'duty dates']
     .filter(Boolean) as string[];
 
   const save = async () => {
@@ -189,7 +184,7 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
         <header className="flex items-center justify-between gap-3 bg-police-navy px-5 py-3.5 text-white">
           <div className="min-w-0">
             <p className="text-xs text-slate-300">{editing ? `Edit duty instruction · version ${instruction!.version}` : 'New duty instruction and duty passport'}</p>
-            <h3 id="instruction-dialog-title" className="truncate text-lg font-semibold">{title || 'Untitled instruction'}</h3>
+            <h3 id="instruction-dialog-title" className="truncate text-lg font-semibold">{title.trim() || autoTitle}</h3>
           </div>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close"
             className="grid size-9 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20">
@@ -200,11 +195,11 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
         <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:overflow-hidden">
           {/* Form */}
           <div className="space-y-3 bg-slate-50 p-3 sm:p-4 lg:overflow-y-auto">
-            <Step number={1} title="Name and recipients" done={Boolean(title.trim())}
+            <Step number={1} title="Name and recipients" done={targets.length > 0}
               description={limited ? 'Only your own zones and sectors. Officers posted there get the passports.' : 'Zone and sector logins in these areas can print the passports for their officers.'}>
               <label className="block space-y-1">
-                <span className={label}>Title</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="e.g. Phase-I duty instructions, 04-06 December" className={field} />
+                <span className={label}>Title <span className={hint}>(optional)</span></span>
+                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder={autoTitle} className={field} />
               </label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="min-w-0 space-y-1">
@@ -255,7 +250,7 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
               ) : null}
             </Step>
 
-            <Step number={2} title="Duty period and passport details" description="Printed in the passport header and officer box." done={!passportGaps.length}>
+            <Step number={2} title="Duty period and passport details" description="Printed in the passport header." done={Boolean(passport.duty_from)}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1">
                   <span className={label}>Duty from</span>
@@ -264,28 +259,6 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
                 <label className="block space-y-1">
                   <span className={label}>Duty to</span>
                   <input type="date" value={passport.duty_to} min={passport.duty_from || undefined} onChange={event => setPassportField('duty_to', event.target.value)} className={field} />
-                </label>
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="duty-hours" className={label}>Duty hours / shift</label>
-                <input id="duty-hours" value={passport.duty_hours} onChange={event => setPassportField('duty_hours', event.target.value)} maxLength={60} placeholder="e.g. 06:00 AM - 10:00 PM" className={field} />
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {HOURS_PRESETS.map(preset => (
-                    <button key={preset} type="button" onClick={() => setPassportField('duty_hours', preset)}
-                      className={`rounded-full border px-2.5 py-0.5 text-xs ${passport.duty_hours === preset ? 'border-police-navy bg-police-navy text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100'}`}>
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-                <label className="block space-y-1">
-                  <span className={label}>Place of duty</span>
-                  <input value={passport.place_of_duty} onChange={event => setPassportField('place_of_duty', event.target.value)} maxLength={120} placeholder="e.g. IISER Tirupati, Tirupati" className={field} />
-                </label>
-                <label className="block space-y-1">
-                  <span className={label}>Batch <span className={hint}>(optional)</span></span>
-                  <input value={passport.batch} onChange={event => setPassportField('batch', event.target.value)} maxLength={60} placeholder="e.g. Batch I" className={field} />
                 </label>
               </div>
             </Step>
@@ -339,33 +312,24 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
                 <input value={backTitle} onChange={event => setBackTitle(event.target.value)} maxLength={200}
                   placeholder="e.g. Brief Instructions – SVBC Watch Tower, SD Mandapam" className={field} />
               </label>
-              <ol className="space-y-2">
-                {backPoints.map((point, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <span aria-hidden="true" className="mt-2 w-5 shrink-0 text-right text-xs font-bold text-slate-500">{index + 1}.</span>
-                    <textarea aria-label={`Back-side point ${index + 1}`} value={point} onChange={event => updatePoint(index, event.target.value)}
-                      rows={2} maxLength={400} className={`${field} min-h-[2.75rem]`} />
-                    <span className="flex shrink-0 flex-col">
-                      <button type="button" aria-label={`Move point ${index + 1} up`} disabled={index === 0} onClick={() => movePoint(index, -1)} className={iconButton}><ArrowUp className="size-4" /></button>
-                      <button type="button" aria-label={`Move point ${index + 1} down`} disabled={index === backPoints.length - 1} onClick={() => movePoint(index, 1)} className={iconButton}><ArrowDown className="size-4" /></button>
-                      <button type="button" aria-label={`Remove point ${index + 1}`} onClick={() => setBackPoints(previous => previous.filter((_, i) => i !== index))}
-                        className="grid size-8 place-items-center rounded-full text-rose-700 hover:bg-rose-50"><Trash2 className="size-4" /></button>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-              {!backPoints.length && <p className="text-xs text-slate-500">No back side: passports print on one side only.</p>}
+              <label className="block space-y-1">
+                <span className={label}>Instructions text</span>
+                <textarea aria-label="Back-side instructions text" value={backText} onChange={event => setBackText(event.target.value)}
+                  rows={12} maxLength={20000} placeholder="Paste or type the full instructions here."
+                  className={`${field} min-h-[14rem] leading-relaxed`} />
+              </label>
+              <p className="text-xs text-slate-500">
+                {backPoints.length > 1 ? `${backPoints.length} points: each new line prints as a numbered point.`
+                  : backPoints.length === 1 ? 'One paragraph: prints as written. Start new lines to make numbered points.'
+                    : 'No back side: passports print on one side only.'}
+              </p>
               <div className="flex flex-wrap items-center gap-2">
-                <PillButton type="button" size="sm" variant="outline" disabled={backPoints.length >= MAX_BACK_POINTS}
-                  icon={<Plus aria-hidden="true" className="size-3.5" />} onClick={() => setBackPoints(previous => [...previous, ''])}>
-                  Add point
-                </PillButton>
-                <button type="button" onClick={() => { setBackTitle(DEFAULT_BACK_TITLE); setBackPoints([...DEFAULT_BACK_POINTS]); }}
+                <button type="button" onClick={() => { setBackTitle(DEFAULT_BACK_TITLE); setBackText(backPointsToText(DEFAULT_BACK_POINTS)); }}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-police-navy hover:underline">
-                  <RotateCcw aria-hidden="true" className="size-3.5" /> Use the standard points
+                  <RotateCcw aria-hidden="true" className="size-3.5" /> Use the standard text
                 </button>
-                {backPoints.length > 0 && (
-                  <button type="button" onClick={() => setBackPoints([])} className="text-xs font-semibold text-rose-700 hover:underline">No back side</button>
+                {backText.trim() && (
+                  <button type="button" onClick={() => setBackText('')} className="text-xs font-semibold text-rose-700 hover:underline">No back side</button>
                 )}
               </div>
             </Step>
@@ -421,7 +385,7 @@ export function InstructionEditorDialog({ instruction, onClose, onSaved, scope }
           {/* Live preview */}
           <aside aria-label="Preview" className="border-t border-slate-200 bg-slate-200/70 p-3 sm:p-4 lg:overflow-y-auto lg:border-l lg:border-t-0">
             <PassportPreview authority={authority}
-              values={{ heading, closing, entries: filledEntries, targets, ...passport, back_title: backTitle, back_points: backPoints.filter(point => point.trim()) }} />
+              values={{ heading, closing, entries: filledEntries, targets, ...passport, back_title: backTitle, back_points: backPoints }} />
           </aside>
         </div>
 

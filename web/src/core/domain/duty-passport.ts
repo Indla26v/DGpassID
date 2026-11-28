@@ -41,14 +41,13 @@ export const DEFAULT_SIGNATORY_DESIGNATION = ['Superintendent of Police,', 'Tiru
 export const NOT_ASSIGNED = 'Not Assigned';
 export const MAX_PASSPORTS = 1000;
 
-/** "FROM 04-12-2026 (5:00 PM - 11:00 AM) - TO 06-12-2026"; parts that are blank are left out. */
+/** "FROM 04-12-2026 - TO 06-12-2026", or "ON 04-12-2026" for one day; blank when no dates are set. */
 export function passportPeriodLine(details: PassportDetails): string {
   const from = details.duty_from ? displayDate(details.duty_from) : '';
   const to = details.duty_to && details.duty_to !== details.duty_from ? displayDate(details.duty_to) : '';
-  const hours = details.duty_hours?.trim() ? `(${details.duty_hours.trim()})` : '';
-  if (!from && !to) return hours ? `DUTY HOURS ${hours}` : '';
-  if (from && !to) return [`ON ${from}`, hours].filter(Boolean).join(' ');
-  return [[from ? `FROM ${from}` : '', hours].filter(Boolean).join(' '), to ? `TO ${to}` : ''].filter(Boolean).join(' - ');
+  if (!from && !to) return '';
+  if (from && !to) return `ON ${from}`;
+  return [from ? `FROM ${from}` : '', to ? `TO ${to}` : ''].filter(Boolean).join(' - ');
 }
 
 /** The rows of the officer box, label then value. A sub-sector is shown with the deployment point. */
@@ -62,11 +61,9 @@ export function passportFields(officer: PassportOfficer, details: PassportDetail
     ['Name of the officer', officer.full_name],
     ['Rank', normalizeRank(officer.rank)],
     ['Gen Number', officer.police_id_number?.trim() || '-'],
-    ['Place of Duty', details.place_of_duty?.trim() || '-'],
     ['Component', component],
     ['Sector Name', sectorName],
     ['Deployment Point', [subSector, point].filter(Boolean).join(' - ') || (sector ? `${sector.number} (sector duty)` : 'Not yet assigned')],
-    ['Batch', details.batch?.trim() || '-'],
   ];
   return rows;
 }
@@ -134,6 +131,7 @@ export function passportIncharges(
   accounts: ZoneAccount[],
   allotments: InchargeAllotment[] = [],
   sectorOfficers: SectorOfficer[] = [],
+  localOfficers: InchargeAllotment[] = [],
 ) {
   const names = (match: (area: PolicePrintScope) => boolean) => {
     const found = [...new Set(accounts.filter(account => account.scope.some(match)).map(account => account.name.trim()).filter(Boolean))];
@@ -184,6 +182,13 @@ export function passportIncharges(
       rank: normalizeRank(item.rank),
       label: `${item.full_name.trim()}${item.mobile_number?.trim() ? ` (${item.mobile_number.replace(/\s+/g, '')})` : ''}`,
     })),
+    /** Contacts printed below the incharges: the sub-sector's own Local Officers, otherwise the sector's. */
+    localOfficers: (() => {
+      const forPlace = (sub: string | null) => localOfficers.filter(item => item.zone === officer.police_zone
+        && item.sector === officer.police_sector_number && (item.sub_sector ?? null) === sub);
+      const own = subSector ? forPlace(subSector) : [];
+      return (own.length ? own : forPlace(null)).map(inchargeLabel);
+    })(),
     componentOfficer: zoneAllotment ? inchargeLabel(zoneAllotment)
       : names(area => area.zone === officer.police_zone && area.sector === null),
   };

@@ -41,7 +41,7 @@ function MainWorkspace() {
 
       <div className="flex min-w-0 flex-1">
       {((effectivePortal === 'police' && !isSubdiv) || (effectivePortal === 'deployment' && user.role === 'BANDOBAST_OFFICER') || (user.role === 'ADMIN' && (effectivePortal === 'admin' || effectivePortal === 'administration'))) && (
-        <aside id="section-sidebar" aria-label="Section menu" className="no-print hidden shrink-0 border-r border-slate-200 bg-white lg:block" />
+        <aside id="section-sidebar" aria-label="Section menu" className="no-print hidden shrink-0 border-r border-[#071a33] bg-police-navy lg:block" />
       )}
       <main id="workspace" className="no-print workspace-width min-w-0 flex-1 py-4 sm:py-5">
         {effectivePortal === 'dashboard' && !isSubdiv && (

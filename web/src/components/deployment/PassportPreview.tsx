@@ -33,6 +33,7 @@ interface FooterNames {
   sectorIncharge: string;
   subSectorIncharge: string | null;
   topOfficers: { rank: string; label: string }[];
+  localOfficers: string[];
 }
 
 type SchemeZone = (typeof POLICE_BANDOBUSHT_ZONES)[number];
@@ -99,19 +100,16 @@ export function PassportPreview({ values, authority }: {
   const signatoryLines = values.signatory.trim()
     ? values.signatory.split('\n').map(line => line.trim()).filter(Boolean)
     : [authority?.name || '', ...DEFAULT_SIGNATORY_DESIGNATION];
-  const text = (value: string) => value.trim() || <span className="text-slate-400">-</span>;
 
   const fields: [string, React.ReactNode][] = [
     ['Name of the officer', <Placeholder key="n">Officer name</Placeholder>],
     ['Rank', <Placeholder key="r">Rank</Placeholder>],
     ['Gen Number', <Placeholder key="g">Gen Number</Placeholder>],
-    ['Place of Duty', text(values.place_of_duty)],
     ['Component', zone ? `Zone ${zone.number}: ${zone.name}` : <Placeholder key="c">Officer&apos;s zone</Placeholder>],
     ['Sector Name', sector ? `${sector.number} - ${sector.name}` : <Placeholder key="s">Officer&apos;s sector</Placeholder>],
     ['Deployment Point', subSector
       ? <span key="d">{subSector} <Placeholder>- duty point</Placeholder></span>
       : <Placeholder key="d">Officer&apos;s duty point</Placeholder>],
-    ['Batch', text(values.batch)],
   ];
 
   return (
@@ -139,7 +137,7 @@ export function PassportPreview({ values, authority }: {
             <p className="pt-[6px] text-center font-serif text-[29px] font-bold tracking-[0.06em] text-[#b22222]">{PASSPORT_TITLE}</p>
             <p className="text-center font-sans text-[10.5px] font-bold tracking-[0.04em] text-slate-800">{PASSPORT_CONFERENCE}</p>
             <p className="mt-[2px] text-center font-sans text-[10.5px] font-bold text-slate-600">
-              {period || <span className="italic text-rose-500">Set the duty dates and hours</span>}
+              {period || <span className="italic text-rose-500">Set the duty dates</span>}
             </p>
           </div>
           <div className="mt-[6px] border-t-[1.3px] border-black" />
@@ -205,6 +203,12 @@ export function PassportPreview({ values, authority }: {
                       <dd className="font-sans text-slate-800">: {item.label}</dd>
                     </React.Fragment>
                   ))}
+                  {(footer.localOfficers ?? []).map((label, index) => (
+                    <React.Fragment key={`local-${index}`}>
+                      <dt className="font-serif text-[13px] font-bold">Local Officer</dt>
+                      <dd className="font-sans text-slate-800">: {label}</dd>
+                    </React.Fragment>
+                  ))}
                 </>
               ) : (
                 <>
@@ -244,14 +248,16 @@ export function PassportPreview({ values, authority }: {
                 <span className="italic text-slate-400">[Officer name · G.No.]</span>
               </div>
               <p className="mt-[30px] text-center font-serif text-[19px] font-bold text-slate-900">{values.back_title.trim() || 'Brief Instructions'}</p>
-              <ol className="mt-[18px] space-y-[10px] font-sans text-[13px] leading-[1.45] text-slate-800">
+              {values.back_points.length === 1 ? (
+                <p className="mt-[18px] whitespace-pre-line text-justify font-sans text-[13.5px] leading-[1.55] text-slate-800">{values.back_points[0]}</p>
+              ) : <ol className="mt-[18px] space-y-[10px] font-sans text-[13px] leading-[1.45] text-slate-800">
                 {values.back_points.map((point, index) => (
                   <li key={index} className="flex gap-[10px]">
                     <span className="w-[22px] shrink-0 text-right font-bold">{index + 1}.</span>
                     <span>{point}</span>
                   </li>
                 ))}
-              </ol>
+              </ol>}
             </div>
           </div>
         </>

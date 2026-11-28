@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { query } from '@/infrastructure/db/pool';
+import { canonicalStation, type MasterStation } from '@/core/domain/police-stations';
+import { loadCustomDutyPoints } from '@/modules/deployment/custom-points.repository';
 import { services } from '@/core/services/service-container';
 import { authorizeRequest } from '@/lib/auth/session-helper';
 import {
@@ -147,15 +150,42 @@ export async function POST(req: Request) {
       const duplicateAadhaar = repeatedAadhaarNumbers(
         body.records.map((record: { govt_id_number?: unknown } | null) => String(record?.govt_id_number ?? '')),
       );
+      // allowIncomplete: save every row that has a name. A bad mobile, Aadhaar or photo is left blank and reported
+      // back in `flags` ("Row n: problem") for review, instead of failing the row.
+      const allowIncomplete = body.allowIncomplete === true;
+      // Duty point codes in the file may refer to points added in the app.
+      await loadCustomDutyPoints().catch(() => undefined);
+      // Police stations are saved with the master list's spelling when the name matches one in it.
+      const masterStations: MasterStation[] = await query<MasterStation>('SELECT district, name, active FROM police_stations')
+        .then(res => res.rows).catch(() => []);
+      const flags: string[] = [];
+      const aadhaarSeen = new Set<string>();
 
       for (let i = 0; i < body.records.length; i++) {
         const record = body.records[i];
         try {
-          const mobile = cleanMobileNumber(record.mobile_number);
-          const aadhaar = cleanAadhaarNumber(String(record.govt_id_number ?? ''));
-          validateMobile(mobile);
-          validateGovernmentId('Aadhaar', aadhaar);
-          if (duplicateAadhaar.has(aadhaar)) throw new Error(DUPLICATE_PERSONNEL_AADHAAR);
+          let mobile = cleanMobileNumber(record.mobile_number);
+          let aadhaar = cleanAadhaarNumber(String(record.govt_id_number ?? ''));
+          const rowFlags: string[] = [];
+          if (allowIncomplete) {
+            if (!String(record.full_name ?? '').trim()) throw new Error('Full Name is required.');
+            try { validateMobile(mobile); } catch (error) {
+              rowFlags.push(`Mobile ${String(record.mobile_number ?? '').trim() || '(blank)'}: ${error instanceof Error ? error.message : 'invalid'}`);
+              mobile = '';
+            }
+            try {
+              validateGovernmentId('Aadhaar', aadhaar);
+              if (aadhaarSeen.has(aadhaar)) throw new Error(DUPLICATE_PERSONNEL_AADHAAR);
+              aadhaarSeen.add(aadhaar);
+            } catch (error) {
+              rowFlags.push(`Aadhaar ${aadhaar ? `ending ${aadhaar.slice(-4)}` : '(blank)'}: ${error instanceof Error ? error.message : 'invalid'}`);
+              aadhaar = '';
+            }
+          } else {
+            validateMobile(mobile);
+            validateGovernmentId('Aadhaar', aadhaar);
+            if (duplicateAadhaar.has(aadhaar)) throw new Error(DUPLICATE_PERSONNEL_AADHAAR);
+          }
 
           const sanitized = sanitizePassInput(record, true);
           sanitized.full_name = (record.full_name || '').toString().trim().toUpperCase();
@@ -177,10 +207,10 @@ export async function POST(req: Request) {
           sanitized.mobile_number = mobile;
           sanitized.status = record.status || undefined;
           const photo = typeof record.photo_url === 'string' ? record.photo_url.trim() : '';
-          if (photo && (photo.length > 500_000 || !/^(https?:\/\/[^\s]+$|data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/]+=*$)/i.test(photo))) {
-            throw new Error('Use a valid photo link or a JPEG, PNG or WebP photo.');
-          }
-          sanitized.photo_url = photo || undefined;
+          const photoValid = !photo || (photo.length <= 500_000 && /^(https?:\/\/[^\s]+$|data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/]+=*$)/i.test(photo));
+          if (!photoValid && !allowIncomplete) throw new Error('Use a valid photo link or a JPEG, PNG or WebP photo.');
+          if (!photoValid) rowFlags.push('Photo could not be used: capture it at the desk.');
+          sanitized.photo_url = photoValid ? photo || undefined : undefined;
 
           // Police Bandobusth Attributes
           sanitized.pass_type = 'POLICE_FORCE';
@@ -199,7 +229,8 @@ export async function POST(req: Request) {
           delete sanitized.gender;
           const force = String(record.force_category ?? '').trim();
           if (force) sanitized.force_category = normalizeForce(force, sanitized.rank as string);
-          const station = String(record.police_station ?? '').trim().replace(/\s+/g, ' ').slice(0, 255);
+          const typedStation = String(record.police_station ?? '').trim().replace(/\s+/g, ' ').slice(0, 255);
+          const station = canonicalStation(masterStations, sanitized.institution_other as string, typedStation) ?? typedStation;
           if (station) sanitized.police_station = station;
           const gender = String(record.gender ?? '').trim();
           if (gender) sanitized.gender = normalizeGender(gender, sanitized.rank as string);
@@ -232,12 +263,16 @@ export async function POST(req: Request) {
           sanitized.gate_zone_c = (sanitized.zone_c && sanitized.institution) ? getDefaultGate(sanitized.institution as string, 'C') : undefined;
 
           if (sanitized.pass_type === 'POLICE_FORCE') {
-            const upsertRes = await services.passRepository.upsertPolicePass(sanitized, auth.user);
+            const upsertRes = await services.passRepository.upsertPolicePass(sanitized, auth.user, { aadhaarConflictAsNew: allowIncomplete });
+            if (upsertRes.conflictWith) {
+              rowFlags.push(`Aadhaar ending ${aadhaar.slice(-4)} differs from ${upsertRes.conflictWith}, an officer with the same name and G.No / mobile: imported as a separate officer, check for a duplicate`);
+            }
             if (upsertRes.isNew) {
               created++;
             } else {
               updated++;
             }
+            if (rowFlags.length) flags.push(`Row ${i + 1}: ${rowFlags.join(' | ')}`);
           } else {
             await services.passRepository.create(sanitized, auth.user);
             created++;
@@ -248,7 +283,7 @@ export async function POST(req: Request) {
         }
       }
 
-      return NextResponse.json({ created, updated, total: created + updated, errors, warnings }, { status: 201 });
+      return NextResponse.json({ created, updated, total: created + updated, errors, warnings, flags }, { status: 201 });
     }
 
     // Single pass creation

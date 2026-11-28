@@ -10,7 +10,7 @@ type Color = [number, number, number];
 const BAND: Color = [221, 217, 196];
 const INK: Color = [0, 0, 0];
 const MARGIN = 10;
-const EXTRA_COLUMNS: DashboardColumn[] = ['AR', 'Others'];
+const EXTRA_COLUMNS: DashboardColumn[] = ['RI', 'RSI', 'ARSI', 'ARHC', 'ARPC', 'Others'];
 
 const sum = (counts: ColumnCounts) => Object.values(counts).reduce((total, value) => total + (value ?? 0), 0);
 const minus = (from: ColumnCounts, parts: ColumnCounts[]): ColumnCounts => {

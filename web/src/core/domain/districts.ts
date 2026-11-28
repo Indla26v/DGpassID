@@ -96,6 +96,12 @@ const DISTRICT_AND_UNIT_ALIASES: Record<string, DistrictOrUnit> = {
   puttaparthi: 'Sri Sathya Sai',
   srikakulam: 'Srikakulam',
   tirupati: 'Tirupati',
+  // Spellings used by the AP Police citizen portal.
+  tirupathi: 'Tirupati',
+  ananthapuram: 'Ananthapuramu',
+  ntrcommissionerate: 'NTR',
+  visakhapatnamcommissionerate: 'Visakhapatnam',
+  drbrambedkarkonaseema: 'Dr. B.R. Ambedkar Konaseema',
   tirupaticity: 'Tirupati',
   visakhapatnam: 'Visakhapatnam',
   vizag: 'Visakhapatnam',

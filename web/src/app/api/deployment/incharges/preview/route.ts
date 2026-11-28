@@ -6,6 +6,7 @@ import { passportIncharges } from '@/core/domain/duty-passport';
 import { scopeTouches } from '@/core/domain/police-print-scope';
 import { deploymentScopeOf } from '@/modules/deployment/deployment.repository';
 import { currentIncharges } from '@/modules/deployment/incharges.repository';
+import { listLocalOfficers } from '@/modules/deployment/local-officers.repository';
 import { listSectorSeniors, listZoneAccounts } from '@/modules/deployment/passports.repository';
 
 /**
@@ -30,12 +31,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'This area is outside your login.' }, { status: 403 });
   }
   try {
-    const [accounts, allotments, seniors] = await Promise.all([
-      listZoneAccounts(), currentIncharges([zone.name]), listSectorSeniors([zone.name]),
+    const [accounts, allotments, seniors, locals] = await Promise.all([
+      listZoneAccounts(), currentIncharges([zone.name]), listSectorSeniors([zone.name]), listLocalOfficers([zone.name]),
     ]);
     const footer = passportIncharges(
       { police_zone: zone.name, police_sector_number: sector.number, police_sector_name: subSector },
-      accounts, allotments, seniors,
+      accounts, allotments, seniors, locals,
     );
     return NextResponse.json(footer, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

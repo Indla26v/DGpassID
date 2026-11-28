@@ -49,13 +49,26 @@ export const PASSPORT_FIELDS = ['duty_from', 'duty_to', 'duty_hours', 'security_
 
 export const DEFAULT_HEADING = 'You are hereby instructed to report for duty as shown below.';
 export const DEFAULT_CLOSING = 'You are further instructed to report back to the Station House Officer (SHO) at the Police Station immediately upon completion of duty.';
-export const DEFAULT_INSTRUCTION_ENTRIES: InstructionEntry[] = ['Accommodation', 'Briefing', 'Spot Briefing', 'Rehearsal', 'Final Duty']
+export const DEFAULT_INSTRUCTION_ENTRIES: InstructionEntry[] = ['Place of Reporting', 'Accommodation', 'Briefing', 'Spot Briefing', 'Rehearsal', 'Final Duty']
   .map(entity => ({ entity, date: '', time: '', place: '' }));
 export const INSTRUCTION_COLUMNS = ['S.No', 'Report Entities', 'Date', 'Time', 'Place'] as const;
 
 export const MAX_ENTRIES = 30;
 export const MAX_BACK_POINTS = 20;
-const MAX_BACK_POINT = 400;
+const MAX_BACK_POINT = 2000;
+
+/**
+ * Back-side text as typed or pasted, split into points: each non-empty line is one point, with any leading
+ * "1.", "1)", "-" or "•" removed. A single paragraph stays one point (printed without a number).
+ */
+export function backTextToPoints(text: string): string[] {
+  return text.split(/\r?\n/)
+    .map(line => line.replace(/^\s*(?:\d{1,2}\s*[.)]|[-•*–])\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, MAX_BACK_POINTS);
+}
+
+export const backPointsToText = (points: string[]) => points.join('\n');
 
 export const DEFAULT_BACK_TITLE = 'Brief Instructions';
 export const DEFAULT_BACK_POINTS = [
@@ -83,11 +96,16 @@ function validDate(value: string): boolean {
   return date.getUTCFullYear() === Number(match[1]) && date.getUTCMonth() === Number(match[2]) - 1 && date.getUTCDate() === Number(match[3]);
 }
 
+/** "Duty instruction · Zone 2: Venues · Sector 2 · 03-12-2026 to 06-12-2026", at most 200 characters. */
+export function defaultInstructionTitle(targets: InstructionTarget[], dutyFrom?: string, dutyTo?: string): string {
+  const dates = dutyFrom ? (dutyTo && dutyTo !== dutyFrom ? `${displayDate(dutyFrom)} to ${displayDate(dutyTo)}` : displayDate(dutyFrom)) : '';
+  return ['Duty instruction', describeTargets(targets), dates].filter(Boolean).join(' · ').slice(0, 200);
+}
+
 /** Cleans and checks an instruction. Returns the clean value or an error message. */
 export function validateInstruction(raw: unknown): { value: InstructionInput } | { error: string } {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const title = clean(input.title, 200);
-  if (!title) return { error: 'Give the instruction a title.' };
+  const typedTitle = clean(input.title, 200);
   if (!Array.isArray(input.entries)) return { error: 'Add at least one report entity.' };
   if (input.entries.length > MAX_ENTRIES) return { error: `Use at most ${MAX_ENTRIES} rows.` };
   const entries: InstructionEntry[] = [];
@@ -107,12 +125,14 @@ export function validateInstruction(raw: unknown): { value: InstructionInput } |
   }
   if (!entries.length) return { error: 'Add at least one report entity.' };
   const targets = parseInstructionTargets(input.targets);
-  if (!targets) return { error: 'Choose the zones, sectors or sub-sectors to send this to.' };
+  if (!targets) return { error: 'Choose the zones, sectors or sub-sectors this instruction is for.' };
   const dutyFrom = clean(input.duty_from, 10);
   const dutyTo = clean(input.duty_to, 10);
   if (dutyFrom && !validDate(dutyFrom)) return { error: 'Enter a valid duty start date.' };
   if (dutyTo && !validDate(dutyTo)) return { error: 'Enter a valid duty end date.' };
   if (dutyFrom && dutyTo && dutyTo < dutyFrom) return { error: 'The duty end date cannot be before the start date.' };
+  // The title is optional: without one, the instruction is named after its area and dates.
+  const title = typedTitle || defaultInstructionTitle(targets, dutyFrom, dutyTo);
   const rawPoints = input.back_points === undefined || input.back_points === null ? [] : input.back_points;
   if (!Array.isArray(rawPoints)) return { error: 'Enter the back-side points as a list.' };
   const backPoints = rawPoints.map(point => cleanBlock(point, MAX_BACK_POINT)).filter(Boolean);

@@ -39,11 +39,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
           <HeaderLogo type="police" size={48} />
           <div className="min-w-0">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-              Andhra Pradesh Police · IISER Tirupati
+            <p className="mb-0.5 text-base font-extrabold uppercase leading-tight tracking-[0.08em] text-white sm:text-[22px]">
+              Tirupati District Police
             </p>
             <h1 className="text-sm font-semibold tracking-tight sm:text-lg">
-              61st All India DGPs / IGPs Conference <span className="text-slate-300">2026</span>
+              61st All India DGPs / IGPs Conference <span className="text-slate-300">2026</span><span className="text-slate-300"> · IISER Tirupati</span>
             </h1>
           </div>
         </div>
@@ -53,7 +53,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             Conference Pass<br />
             <span className="font-medium text-white">Duty access management</span>
           </div>
-          <HeaderLogo type="iiser" size={48} />
+          <HeaderLogo type="tirupati-police" size={48} className="rounded-lg p-0.5" />
         </div>
       </div>
       <div className="border-b-2 border-t border-b-[#8B1A1A] border-t-white/10 bg-[#061527]">

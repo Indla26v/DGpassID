@@ -29,12 +29,12 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-1',
     number: 1,
     name: 'International Airport, Renigunta',
-    totalAllocation: 178,
+    totalAllocation: 175,
     sectors: [
       {
         number: 'Sector 1',
         name: 'International Airport, Renigunta',
-        allocation: 178,
+        allocation: 175,
       },
     ],
   },
@@ -42,8 +42,8 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-2',
     number: 2,
     name: 'Venues',
-    subtitle: 'IISER, IIT, Srivari Temple',
-    totalAllocation: 731,
+    subtitle: 'IISER and IIT',
+    totalAllocation: 476,
     sectors: [
       {
         number: 'Sector 1',
@@ -57,17 +57,12 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
           '1(F) Parking Place(ITDC Labour Camp) - Outside IISER towards Jangalapalli',
           '1(G) Pickets at Road side Villages',
         ],
-        allocation: 374,
+        allocation: 353,
       },
       {
         number: 'Sector 2',
         name: 'IIT, Tirupati',
         allocation: 123,
-      },
-      {
-        number: 'Sector 3',
-        name: 'Srivari Temple, Tirumala',
-        allocation: 234,
       },
     ],
   },
@@ -75,8 +70,8 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-3',
     number: 3,
     name: 'Routes',
-    subtitle: 'Airport to IISER & IISER to Tirumala',
-    totalAllocation: 882,
+    subtitle: 'Airport to IISER',
+    totalAllocation: 441,
     sectors: [
       {
         number: 'Sector 1',
@@ -86,22 +81,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
           '1(B) Route BB from Culvert Near Seetharampeta fly over Junction to IISER',
           '1(C) Route Mobiles (2 shifts)',
         ],
-        allocation: 422,
-      },
-      {
-        number: 'Sector 2',
-        name: 'Route Bandobust from Guttivaripalli cross to Sahaya College (Daminedu)',
-        allocation: 96,
-      },
-      {
-        number: 'Sector 3',
-        name: "Route from Daminedu 'U' turn to Garuda Circle",
-        allocation: 289,
-      },
-      {
-        number: 'Sector 4',
-        name: 'Garuda Arch, Tirupati to GNC toll gate, Tirumala',
-        allocation: 75,
+        allocation: 441,
       },
     ],
   },
@@ -109,8 +89,8 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-4',
     number: 4,
     name: 'Traffic',
-    subtitle: 'Tirupati and Tirumala Traffic Component',
-    totalAllocation: 435,
+    subtitle: 'Tirupati Traffic Component',
+    totalAllocation: 357,
     sectors: [
       { number: 'Sector 1', name: 'Airport to IISER', allocation: 80 },
       { number: 'Sector 2', name: 'Airport to IIT', allocation: 24 },
@@ -128,7 +108,6 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
       { number: 'Sector 14', name: 'Annamayya Junction - RC puram Junction' },
       { number: 'Sector 15', name: 'Cherlopalli Junction - Omega Hospital Upparapalli Circle', allocation: 6 },
       { number: 'Sector 16', name: 'Garuda Circle To Sri Venkateswara Agriculture University', allocation: 31 },
-      { number: 'Sector 17', name: 'Tirumala Traffic component', allocation: 78 },
     ],
   },
   {
@@ -136,7 +115,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     number: 5,
     name: 'Accommodations/Stay Places',
     subtitle: 'ICI & SV Alumni Guest Houses, Private Hotels and Homestays',
-    totalAllocation: 427,
+    totalAllocation: 143,
     sectors: [
       {
         number: 'Sector 1',
@@ -161,12 +140,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
           'RAJ PARK',
           'OTHERS',
         ],
-        allocation: 133,
-      },
-      {
-        number: 'Sector 3',
-        name: 'Places of Stay at Tirumala',
-        allocation: 270,
+        allocation: 119,
       },
     ],
   },
@@ -174,7 +148,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-6',
     number: 6,
     name: 'ICCC, Sub-Controls & Essentials',
-    totalAllocation: 576,
+    totalAllocation: 506,
     sectors: [
       {
         number: 'Sector 1',
@@ -184,7 +158,7 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
       {
         number: 'Sector 2',
         name: 'Sub-Controls',
-        allocation: 393,
+        allocation: 323,
       },
       {
         number: 'Sector 3',
@@ -197,13 +171,12 @@ export const POLICE_BANDOBUSHT_ZONES: PoliceZoneItem[] = [
     id: 'ZONE-7',
     number: 7,
     name: 'Contingency Plan',
-    totalAllocation: 487,
+    totalAllocation: 460,
     sectors: [
-      { number: 'Sector 1', name: 'Contingency route', allocation: 121 },
+      { number: 'Sector 1', name: 'Contingency route', allocation: 112 },
       { number: 'Sector 2', name: 'Contingency Hospitals', allocation: 33 },
       { number: 'Sector 3', name: 'Safe Houses', allocation: 21 },
-      { number: 'Sector 4', name: 'Lodges/Hotels/Homestays Checking/ Night Patrols & Vehicle checking', allocation: 97 },
-      { number: 'Sector 5', name: 'Reserve Force', allocation: 215 },
+      { number: 'Sector 4', name: 'Reserve Force & Tirumala Protocol', allocation: 294 },
     ],
   },
   {
@@ -275,8 +248,9 @@ export const SECURITY_COMPONENTS_LIST = [
  * "ZONE: [ZONE NAME]"
  */
 export function formatPoliceBadgeZone(zoneName?: string | null): string {
+  // An officer not yet allotted shows that plainly instead of a made-up zone.
   if (!zoneName || !zoneName.trim()) {
-    return 'ZONE: POLICE COMMAND AND CONTROL CENTER';
+    return 'ZONE: NOT YET ALLOTTED';
   }
   const clean = zoneName.trim().toUpperCase();
   if (clean.startsWith('ZONE:')) return clean;
@@ -293,9 +267,10 @@ export function formatPoliceSectorAccess(
   customSector?: string | null,
   securityComponent?: string | null
 ): { sectorNumber: string; sectorName: string } {
-  const sNum = (sectorNumber || 'SECTOR 4').trim().toUpperCase();
-  
-  let sName = (sectorName || 'POLICE COMMAND AND CONTROL CENTER').trim().toUpperCase();
+  // Not yet allotted: no sector number or name to show.
+  const sNum = (sectorNumber || '—').trim().toUpperCase();
+
+  let sName = (sectorName || 'NOT YET ALLOTTED').trim().toUpperCase();
   if (sName === 'OTHERS' && customSector && customSector.trim()) {
     sName = customSector.trim().toUpperCase();
   }
@@ -339,8 +314,18 @@ const subSectorKey = (sector: PoliceSectorItem, subSector: string) => {
   return letter ? letter.toUpperCase() : 'X' + ((sector.subSectors ?? []).indexOf(subSector) + 1);
 };
 
-/** Every seeded point, with a stable code such as Z2-S1-A-03 or Z4-S10-12. */
+// Points added in the app (custom_duty_points), loaded from the server and appended after the scheme's points.
+let customPoints: DutyPoint[] = [];
+export function setCustomDutyPoints(points: DutyPoint[]) {
+  customPoints = points;
+}
+
+/** Every point: the scheme's (stable codes such as Z2-S1-A-03) followed by those added in the app (N-...). */
 export function allDutyPoints(): DutyPoint[] {
+  return customPoints.length ? [...seededDutyPoints(), ...customPoints] : seededDutyPoints();
+}
+
+function seededDutyPoints(): DutyPoint[] {
   if (pointIndex) return pointIndex;
   const points: DutyPoint[] = [];
   for (const entry of schemePoints.points) {

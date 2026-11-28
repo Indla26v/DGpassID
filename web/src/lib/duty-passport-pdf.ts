@@ -76,6 +76,7 @@ export function dutyPassportPdf(
   signature: PassportSignature,
   allotments: InchargeAllotment[] = [],
   sectorOfficers: SectorOfficer[] = [],
+  localOfficers: InchargeAllotment[] = [],
 ): Uint8Array {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const { left, right } = loadLogos();
@@ -185,13 +186,14 @@ export function dutyPassportPdf(
     if (instruction.closing) y = write(instruction.closing, MARGIN, y, 'times', 'bold', 11, INK) + 3;
 
     // Footer: Sector Incharge and the next senior officers of the sector on the left, SP name block on the right.
-    const { sectorIncharge, subSectorIncharge, topOfficers } = passportIncharges(officer, accounts, allotments, sectorOfficers);
+    const { sectorIncharge, subSectorIncharge, topOfficers, localOfficers: locals } = passportIncharges(officer, accounts, allotments, sectorOfficers, localOfficers);
     const footerTop = y + 4;
     let leftY = footerTop;
     const footerLines: [string, string][] = [
       ['Sector Incharge', sectorIncharge],
       ...(subSectorIncharge ? [['Sub-sector Incharge', subSectorIncharge] as [string, string]] : []),
       ...topOfficers.map(item => [item.rank, item.label] as [string, string]),
+      ...locals.map(label => ['Local Officer', label] as [string, string]),
     ];
     for (const [label, value] of footerLines) {
       write(label, MARGIN, leftY, 'times', 'bold', 10, INK);
@@ -224,12 +226,17 @@ export function dutyPassportPdf(
       doc.setLineWidth(0.35);
       doc.line(MARGIN, 19, PAGE_W - MARGIN, 19);
       let backY = write(backTitle, PAGE_W / 2, 31, 'times', 'bold', 14, INK, { align: 'center', width: contentW - 10 }) + 4;
-      for (const [index, point] of backPoints.entries()) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(...INK);
-        doc.text(`${index + 1}.`, MARGIN + 7, backY, { align: 'right' });
-        backY = write(point, MARGIN + 10, backY, 'helvetica', 'normal', 10, INK, { width: contentW - 10 }) + 2.4;
+      // One paragraph prints as written; several lines print as numbered points.
+      if (backPoints.length === 1) {
+        write(backPoints[0], MARGIN, backY, 'helvetica', 'normal', 10.5, INK, { width: contentW });
+      } else {
+        for (const [index, point] of backPoints.entries()) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(...INK);
+          doc.text(`${index + 1}.`, MARGIN + 7, backY, { align: 'right' });
+          backY = write(point, MARGIN + 10, backY, 'helvetica', 'normal', 10, INK, { width: contentW - 10 }) + 2.4;
+        }
       }
     }
   }

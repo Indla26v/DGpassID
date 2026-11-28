@@ -1,6 +1,6 @@
 /**
  * Rank-wise strength required per sector (and some sub-sectors), transcribed from the
- * zone abstracts of the DGPs/IGPs Conference 2026 Zonal BB scheme (draft 26-11-2026).
+ * zone abstracts of the DGPs/IGPs Conference 2026 Zonal BB scheme (zones 1-7: Phase-I scheme, IISER conference all-zones sheet; zone 8: draft 26-11-2026).
  * Columns follow the scheme: SP, Addl. SP, DSP, CI, SI, ASI/HC, PC, WPC, HG.
  */
 import { POLICE_BANDOBUSHT_ZONES } from './police-zones';
@@ -18,31 +18,27 @@ const R = (sp: number, asp: number, dsp: number, ci: number, si: number, asiHc: 
 };
 
 export const SCHEME_REQUIREMENTS: Record<Key, RankRequirement> = {
-  // Zone 1 — International Airport, Renigunta (178)
-  'ZONE-1|Sector 1': R(1, 1, 4, 8, 15, 33, 112, 4),
+  // Zone 1 — International Airport, Renigunta (175)
+  'ZONE-1|Sector 1': R(1, 1, 4, 8, 12, 33, 112, 4),
 
-  // Zone 2 — Venues (731)
-  'ZONE-2|Sector 1': R(1, 2, 11, 17, 54, 54, 235),
-  'ZONE-2|Sector 1|1(A) IISER main gate and inside': R(1, 2, 4, 4, 8, 8, 24),
-  'ZONE-2|Sector 1|1(B) IISER inside Parking area': R(0, 0, 2, 2, 6, 16, 32),
+  // Zone 2 — Venues: IISER and IIT (476)
+  'ZONE-2|Sector 1': R(1, 2, 11, 14, 42, 52, 231),
+  'ZONE-2|Sector 1|1(A) IISER main gate and inside': R(1, 2, 4, 4, 4, 8, 24),
+  'ZONE-2|Sector 1|1(B) IISER inside Parking area': R(0, 0, 2, 2, 4, 16, 32),
   'ZONE-2|Sector 1|1(C) IISER residential quarters route BB for delegates': R(0, 0, 2, 2, 6, 6, 50),
   'ZONE-2|Sector 1|1(D) IISER Roof tops': R(0, 0, 0, 0, 2, 0, 24),
   'ZONE-2|Sector 1|1(E) IISER Surroundings': R(0, 0, 2, 2, 12, 14, 45),
-  'ZONE-2|Sector 1|1(F) Parking Place(ITDC Labour Camp) - Outside IISER towards Jangalapalli': R(0, 0, 1, 5, 10, 10, 40),
+  'ZONE-2|Sector 1|1(F) Parking Place(ITDC Labour Camp) - Outside IISER towards Jangalapalli': R(0, 0, 1, 2, 4, 8, 36),
   'ZONE-2|Sector 1|1(G) Pickets at Road side Villages': R(0, 0, 0, 2, 10, 0, 20),
   'ZONE-2|Sector 2': R(0, 1, 2, 6, 14, 18, 82),
-  'ZONE-2|Sector 3': R(1, 1, 3, 7, 28, 51, 119, 8, 16),
 
-  // Zone 3 — Routes (882)
-  'ZONE-3|Sector 1': R(1, 2, 6, 20, 36, 64, 293),
+  // Zone 3 — Routes: Airport to IISER (441)
+  'ZONE-3|Sector 1': R(1, 2, 6, 20, 39, 72, 301),
   'ZONE-3|Sector 1|1(A) Route BB from Jinkalamitta to Seetharampeta fly over Junction': R(1, 1, 2, 4, 8, 11, 111),
   'ZONE-3|Sector 1|1(B) Route BB from Culvert Near Seetharampeta fly over Junction to IISER': R(0, 1, 4, 12, 22, 25, 182),
-  'ZONE-3|Sector 1|1(C) Route Mobiles (2 shifts)': R(0, 0, 0, 4, 6, 28, 0),
-  'ZONE-3|Sector 2': R(0, 1, 2, 4, 4, 13, 72),
-  'ZONE-3|Sector 3': R(0, 1, 2, 8, 16, 48, 196, 0, 18),
-  'ZONE-3|Sector 4': R(0, 1, 2, 3, 6, 9, 42, 2, 10),
+  'ZONE-3|Sector 1|1(C) Route Mobiles (2 shifts)': R(0, 0, 0, 4, 9, 36, 8),
 
-  // Zone 4 — Traffic (435). Sectors 3 and 11–14 are covered by Sectors 1 and 10 in the scheme.
+  // Zone 4 — Traffic: Tirupati (357). Sectors 3 and 11–14 are covered by Sectors 1 and 10 in the scheme.
   'ZONE-4|Sector 1': R(0, 0, 1, 5, 8, 12, 54),
   'ZONE-4|Sector 2': R(0, 0, 0, 2, 2, 0, 20),
   'ZONE-4|Sector 4': R(0, 0, 0, 1, 1, 4, 16),
@@ -54,24 +50,21 @@ export const SCHEME_REQUIREMENTS: Record<Key, RankRequirement> = {
   'ZONE-4|Sector 10': R(0, 0, 0, 4, 8, 29, 45),
   'ZONE-4|Sector 15': R(0, 0, 0, 0, 1, 2, 3),
   'ZONE-4|Sector 16': R(0, 0, 0, 2, 6, 6, 17),
-  'ZONE-4|Sector 17': R(0, 0, 0, 2, 4, 20, 50, 2),
 
-  // Zone 5 — Accommodations (427)
+  // Zone 5 — Accommodations (143)
   'ZONE-5|Sector 1': R(0, 0, 0, 4, 4, 4, 12),
-  'ZONE-5|Sector 2': R(0, 0, 0, 6, 19, 26, 82),
-  'ZONE-5|Sector 3': R(1, 1, 8, 13, 21, 58, 152, 16),
+  'ZONE-5|Sector 2': R(0, 0, 0, 6, 17, 26, 70),
 
-  // Zone 6 — ICCC, Sub-Controls & Essentials (576)
+  // Zone 6 — ICCC, Sub-Controls & Essentials (506)
   'ZONE-6|Sector 1': R(2, 0, 2, 2, 4, 10, 10, 4),
-  'ZONE-6|Sector 2': R(0, 5, 14, 50, 70, 70, 166, 18),
+  'ZONE-6|Sector 2': R(0, 5, 14, 34, 54, 60, 138, 18),
   'ZONE-6|Sector 3': R(0, 0, 1, 10, 16, 12, 110),
 
-  // Zone 7 — Contingency Plan (487)
-  'ZONE-7|Sector 1': R(0, 0, 1, 6, 9, 29, 76),
+  // Zone 7 — Contingency Plan (460)
+  'ZONE-7|Sector 1': R(0, 0, 1, 2, 4, 29, 76),
   'ZONE-7|Sector 2': R(0, 0, 0, 0, 11, 11, 11),
   'ZONE-7|Sector 3': R(0, 0, 0, 0, 7, 7, 7),
-  'ZONE-7|Sector 4': R(0, 0, 1, 8, 8, 32, 48),
-  'ZONE-7|Sector 5': R(0, 1, 2, 10, 28, 56, 118),
+  'ZONE-7|Sector 4': R(4, 8, 12, 10, 5, 83, 142, 30),
 
   // Zone 8 — Security Component (2824; abstract uses the civil column names for the AR component).
   // Sector 1 (1801) = AR component, convoy officers, liaison, special party, APSP, OCTOPUS, Greyhounds, CPT/APT.
