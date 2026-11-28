@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { MapPinned, Search, Undo2, UserCheck, UserMinus } from 'lucide-react';
+import { MapPinned, Plus, Search, Undo2, UserCheck, UserMinus, X } from 'lucide-react';
 import { DutyPointsMapDialog } from './DutyPointsMapDialog';
+import { useCustomDutyPoints } from './useCustomDutyPoints';
 import { useAuth } from '@/auth/AuthProvider';
 import { OperationsHeader } from '../common/OperationsHeader';
 import { PillButton } from '../common/PillButton';
@@ -43,6 +44,11 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
   const [saving, setSaving] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [confirmSendBack, setConfirmSendBack] = useState(false);
+  // Duty points added in the app; `pointsVersion` re-reads the point lists after they load or change.
+  const { version: pointsVersion, reload: reloadPoints } = useCustomDutyPoints();
+  const [addingPoint, setAddingPoint] = useState(false);
+  const [newPointName, setNewPointName] = useState('');
+  const [pointBusy, setPointBusy] = useState(false);
 
   const activeSector = sectorFilter || (sectors.length === 1 ? sectors[0].number : '');
   // Sub-sectors of the chosen sector (the Sub-sector filter appears only when there are some).
@@ -346,6 +352,62 @@ export function PointAssignmentPortal({ embedded = false }: { embedded?: boolean
                 options={[{ value: '', label: targetPoints.length ? 'No point (sector / sub-sector only)' : 'No points listed here' },
                   ...targetPoints.map(item => ({ value: item.code, label: item.name }))]} />
             </div>
+            {targetSector && (() => {
+              // A new point goes into the chosen sector, and into the chosen sub-sector when the sector has them.
+              const needsSub = Boolean(targetSector.subSectors?.length);
+              const place = needsSub ? target.subSector : targetSector.number;
+              const addPoint = async () => {
+                setPointBusy(true);
+                setError('');
+                setNotice('');
+                try {
+                  const response = await fetch('/api/deployment/points', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ zone: zoneName, sectorNumber: targetSector.number, subSector: needsSub ? target.subSector : null, name: newPointName }),
+                  });
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.error || 'Could not add the duty point.');
+                  await reloadPoints();
+                  setTarget(current => ({ ...current, sector: targetSector.number, point: data.point.code }));
+                  setNotice(`Duty point "${data.point.name}" added to ${targetSector.number}${needsSub ? ` · ${target.subSector}` : ''} and chosen below.`);
+                  setNewPointName('');
+                  setAddingPoint(false);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Could not add the duty point.');
+                } finally {
+                  setPointBusy(false);
+                }
+              };
+              return (
+                <div className="min-w-0 sm:col-span-2" data-points-version={pointsVersion}>
+                  {addingPoint ? (
+                    <div className="space-y-2 rounded-xl border border-dashed border-police-navy/40 bg-slate-50 p-2.5">
+                      <p className="text-xs font-semibold text-slate-700">
+                        New duty point in Zone {zone?.number} · {targetSector.number}{needsSub ? ` · ${target.subSector || 'choose a sub-sector above'}` : ''}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input autoFocus value={newPointName} onChange={event => setNewPointName(event.target.value)} maxLength={255}
+                          onKeyDown={event => { if (event.key === 'Enter' && place && newPointName.trim().length >= 2 && !pointBusy) void addPoint(); }}
+                          aria-label="New duty point name" placeholder="e.g. Gate No. 3 near canteen"
+                          className="operations-input min-w-0 flex-[1_1_16rem] px-3.5" />
+                        <PillButton type="button" variant="crimson" size="sm" disabled={pointBusy || !place || newPointName.trim().length < 2}
+                          icon={<Plus aria-hidden="true" className="size-3.5" />} onClick={addPoint}>
+                          {pointBusy ? 'Adding…' : 'Add point'}
+                        </PillButton>
+                        <button type="button" aria-label="Cancel adding a duty point" onClick={() => { setAddingPoint(false); setNewPointName(''); }}
+                          className="grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-200"><X className="size-4" /></button>
+                      </div>
+                      {needsSub && !target.subSector && <p className="text-xs text-amber-800">This sector has sub-sectors: choose the sub-sector above first.</p>}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setAddingPoint(true)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-police-navy hover:underline">
+                      <Plus aria-hidden="true" className="size-3.5" /> Add duty point {needsSub ? 'to a sub-sector' : `to ${targetSector.number}`}
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
               <PillButton type="button" variant="crimson" disabled={saving || !selected.size || !targetSector}
                 icon={<UserCheck aria-hidden="true" className="size-3.5" />}

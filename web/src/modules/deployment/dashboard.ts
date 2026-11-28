@@ -8,7 +8,9 @@ import { AR_RANKS, normalizeRank, rankGroupOf } from '@/core/domain/ranks';
 import { SCHEME_RANK_COLUMNS, schemeColumnOf, schemeRequirement, type RankRequirement } from '@/core/domain/scheme-requirements';
 import { policeDistrictSql } from './deployment.repository';
 
-export const DASHBOARD_COLUMNS = [...SCHEME_RANK_COLUMNS, 'AR', 'Others'] as const;
+/** Civil scheme columns, then each AR (Armed Reserve) rank on its own, most senior first, then anything else. */
+export const AR_DASHBOARD_COLUMNS = ['RI', 'RSI', 'ARSI', 'ARHC', 'ARPC'] as const;
+export const DASHBOARD_COLUMNS = [...SCHEME_RANK_COLUMNS, ...AR_DASHBOARD_COLUMNS, 'Others'] as const;
 export type DashboardColumn = (typeof DASHBOARD_COLUMNS)[number];
 export type ColumnCounts = Partial<Record<DashboardColumn, number>>;
 
@@ -49,7 +51,8 @@ interface GroupRow {
 export function dashboardColumnOf(rank?: string | null): DashboardColumn {
   const column = schemeColumnOf(rank);
   if (column) return column;
-  return (AR_RANKS as readonly string[]).includes(normalizeRank(rank)) ? 'AR' : 'Others';
+  const normal = normalizeRank(rank);
+  return (AR_RANKS as readonly string[]).includes(normal) ? normal as DashboardColumn : 'Others';
 }
 
 const addRequirement = (into: RankRequirement, from?: RankRequirement | null) => {

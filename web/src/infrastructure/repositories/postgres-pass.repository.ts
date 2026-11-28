@@ -1215,8 +1215,9 @@ export class PostgresPassRepository implements IPassRepository {
 
   async upsertPolicePass(
     passData: Record<string, unknown>,
-    actor: SessionUser
-  ): Promise<{ pass: PassEntity; isNew: boolean }> {
+    actor: SessionUser,
+    options: { aadhaarConflictAsNew?: boolean } = {}
+  ): Promise<{ pass: PassEntity; isNew: boolean; conflictWith?: string }> {
     return withTransaction(async (client) => {
       await client.query('SELECT pg_advisory_xact_lock(6102028)');
       const pId = (passData.police_id_number as string)?.trim() || null;
@@ -1225,24 +1226,32 @@ export class PostgresPassRepository implements IPassRepository {
       const mobSuffix = cleanMob && cleanMob.length >= 10 ? cleanMob.slice(-10) : cleanMob;
       const fullName = (passData.full_name as string)?.trim() || null;
 
-      // Look for an existing police pass
+      // Look for the same officer, strongest identifier first: Aadhaar, then name + mobile, then G.No + name.
+      // A G.No on its own is not enough: different officers (even in one district) share G.No numbers.
       let existingPass: PassEntity | null = null;
-      if (pId || aadhaar || (fullName && mobSuffix)) {
+      let conflictWith: string | undefined;
+      const matchers: [boolean, string, unknown[]][] = [
+        [Boolean(aadhaar), 'govt_id_number = $1', [aadhaar]],
+        [Boolean(fullName && mobSuffix), `LOWER(TRIM(full_name)) = LOWER(TRIM($1)) AND RIGHT(REGEXP_REPLACE(mobile_number, '[^0-9]', '', 'g'), 10) = $2`, [fullName, mobSuffix]],
+        [Boolean(pId && fullName), `LOWER(police_id_number) = LOWER($1)
+            AND REGEXP_REPLACE(UPPER(full_name), '[^A-Z0-9]', '', 'g') = REGEXP_REPLACE(UPPER($2), '[^A-Z0-9]', '', 'g')`, [pId, fullName]],
+      ];
+      for (const [usable, condition, params] of matchers) {
+        if (!usable) continue;
         const queryRes = await client.query<PassEntity>(
-          `SELECT * FROM passes
-           WHERE pass_type = 'POLICE_FORCE'
-             AND (
-               ($1::text IS NOT NULL AND LOWER(police_id_number) = LOWER($1))
-               OR ($2::text IS NOT NULL AND govt_id_number = $2)
-               OR ($3::text IS NOT NULL AND $4::text IS NOT NULL AND LOWER(TRIM(full_name)) = LOWER(TRIM($3)) AND RIGHT(REGEXP_REPLACE(mobile_number, '[^0-9]', '', 'g'), 10) = $4)
-             )
-           LIMIT 2`,
-          [pId, aadhaar, fullName, mobSuffix]
-        );
+          `SELECT * FROM passes WHERE pass_type = 'POLICE_FORCE' AND ${condition} LIMIT 2`, params);
         if (queryRes.rows.length > 1) {
           throw new Error('The identifiers match multiple police officers. Check the Police ID, Aadhaar and mobile number.');
         }
-        existingPass = queryRes.rows[0] || null;
+        const found = queryRes.rows[0];
+        if (!found) continue;
+        // Same name / G.No but another Aadhaar: when allowed, treat it as a different officer and say which one it resembles.
+        if (options.aadhaarConflictAsNew && aadhaar && found.govt_id_number && found.govt_id_number !== aadhaar) {
+          conflictWith = found.pass_number;
+          continue;
+        }
+        existingPass = found;
+        break;
       }
 
       if (existingPass) {
@@ -1359,7 +1368,7 @@ export class PostgresPassRepository implements IPassRepository {
       passData.force_category ||= normalizeForce('', passData.rank as string);
       passData.gender ||= normalizeGender('', passData.rank as string);
       const newPass = await this.createInTransaction(passData, actor, client);
-      return { pass: newPass, isNew: true };
+      return { pass: newPass, isNew: true, ...(conflictWith ? { conflictWith } : {}) };
     });
   }
 }

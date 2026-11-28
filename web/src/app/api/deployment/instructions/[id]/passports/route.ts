@@ -7,6 +7,7 @@ import { getInstruction } from '@/modules/deployment/instructions.repository';
 import { deploymentScopeOf } from '@/modules/deployment/deployment.repository';
 import { listPassportOfficers, listSectorSeniors, listZoneAccounts, passportCounts, type PassportFilters } from '@/modules/deployment/passports.repository';
 import { currentIncharges } from '@/modules/deployment/incharges.repository';
+import { listLocalOfficers } from '@/modules/deployment/local-officers.repository';
 import { dutyPassportPdf } from '@/lib/duty-passport-pdf';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,17 +57,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const zonesPrinted = [...new Set(officers.map(officer => officer.police_zone).filter((zone): zone is string => Boolean(zone)))];
-    const [accounts, authority, allotments, seniors] = await Promise.all([
+    const [accounts, authority, allotments, seniors, locals] = await Promise.all([
       listZoneAccounts(),
       services.configRepository.getAuthoritySignature('district'),
       currentIncharges(zonesPrinted),
       listSectorSeniors(zonesPrinted),
+      listLocalOfficers(zonesPrinted),
     ]);
     const signatoryText = instruction.signatory?.trim() || [authority.name || 'Superintendent of Police', ...DEFAULT_SIGNATORY_DESIGNATION].join('\n');
     const pdf = dutyPassportPdf(instruction, officers, accounts, {
       imageUrl: authority.signatureUrl?.startsWith('data:image/') ? authority.signatureUrl : null,
       lines: signatoryText.split('\n').map(line => line.trim()).filter(Boolean),
-    }, allotments, seniors);
+    }, allotments, seniors, locals);
 
     void services.auditRepository.createLog({
       action: 'DUTY_PASSPORTS_PRINTED', performed_by: auth.user.email, user_role: auth.user.role,

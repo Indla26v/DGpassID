@@ -47,15 +47,12 @@ export const PoliceBandobusthSelector: React.FC<PoliceBandobusthSelectorProps> =
     const found = POLICE_BANDOBUSHT_ZONES.find(
       (z) => z.name.toLowerCase() === (zone || '').toLowerCase() || z.id === zone
     );
-    return found ? found.id : 'ZONE-6';
+    // An officer with no zone shows "Not yet allotted" (it used to pre-fill Zone 6, which a later change could save).
+    return found ? found.id : '';
   });
 
-  const [selectedSectorNumber, setSelectedSectorNumber] = useState<string>(
-    sectorNumber || 'Sector 1'
-  );
-  const [selectedSectorName, setSelectedSectorName] = useState<string>(
-    sectorName || 'IIT-Integrated control room (ICCC) old library'
-  );
+  const [selectedSectorNumber, setSelectedSectorNumber] = useState<string>(sectorNumber || '');
+  const [selectedSectorName, setSelectedSectorName] = useState<string>(sectorName || '');
   const [customInput, setCustomInput] = useState<string>(customSector || '');
   const [selectedSecurityComponent, setSelectedSecurityComponent] = useState<string>(
     securityComponent || 'None'
@@ -79,7 +76,14 @@ export const PoliceBandobusthSelector: React.FC<PoliceBandobusthSelectorProps> =
   const handleZoneChange = (zoneId: string) => {
     setSelectedZoneId(zoneId);
     const z = POLICE_BANDOBUSHT_ZONES.find((item) => item.id === zoneId);
-    if (!z || z.sectors.length === 0) return;
+    if (!z) {
+      // "Not yet allotted": clear the posting.
+      setSelectedSectorNumber('');
+      setSelectedSectorName('');
+      onChange({ police_zone: '', police_sector_number: '', police_sector_name: '', police_custom_sector: undefined, security_component: undefined });
+      return;
+    }
+    if (z.sectors.length === 0) return;
 
     const firstSector = z.sectors[0];
     const newSectorNum = firstSector.number;
@@ -161,16 +165,17 @@ export const PoliceBandobusthSelector: React.FC<PoliceBandobusthSelectorProps> =
       label: 'Bandobusth zone',
       value: selectedZoneId,
       onChange: handleZoneChange,
-      options: POLICE_BANDOBUSHT_ZONES.map((item) => ({ value: item.id, label: `Zone ${item.number}: ${item.name}` })),
+      options: [{ value: '', label: 'Not yet allotted' }, ...POLICE_BANDOBUSHT_ZONES.map((item) => ({ value: item.id, label: `Zone ${item.number}: ${item.name}` }))],
       fullWidth: true,
     },
-    {
+    // The sector box appears once a zone is chosen.
+    ...(currentZone ? [{
       label: 'Assigned sector',
       value: selectedSectorNumber,
       onChange: handleSectorChange,
-      options: currentZone?.sectors.map((item) => ({ value: item.number, label: `${item.number}: ${item.name}` })) ?? [],
+      options: currentZone.sectors.map((item) => ({ value: item.number, label: `${item.number}: ${item.name}` })),
       fullWidth: true,
-    },
+    }] : []),
     ...(subSectors.length ? [{
       label: 'Sub-sector / location',
       placeholder: 'Choose a sub-sector',

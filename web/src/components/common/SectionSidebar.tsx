@@ -85,9 +85,9 @@ export function SectionSidebar<T extends string>({
         <button type="button" aria-current={isActive ? 'page' : undefined} onClick={() => onChange(id)}
           title={collapsed ? label : hint} aria-label={label}
           className={`flex w-full items-center gap-2 rounded-lg py-1.5 text-left transition-colors ${collapsed ? 'justify-center' : nested ? 'pl-2.5 pr-2' : 'px-2.5'} ${isActive
-            ? 'bg-police-navy text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}>
-          <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? 'text-white' : 'text-police-crimson'}`} />
-          {!collapsed && <span className="min-w-0 truncate text-[13px] font-semibold">{label}</span>}
+            ? 'bg-police-crimson text-white shadow-md shadow-black/20' : 'text-slate-200 hover:bg-white/10 hover:text-white'}`}>
+          <Icon aria-hidden="true" className={`size-4 shrink-0 text-white`} />
+          {!collapsed && <span className="min-w-0 truncate text-[13.5px] font-bold tracking-[0.01em]">{label}</span>}
         </button>
       </li>
     );
@@ -98,7 +98,7 @@ export function SectionSidebar<T extends string>({
     // In icon mode the items are shown directly, between dividers, so they stay one click away.
     if (collapsed) {
       return (
-        <li key={entry.group} className="border-y border-slate-200 py-0.5">
+        <li key={entry.group} className="border-y border-white/15 py-0.5">
           <ul aria-label={entry.label} className="flex flex-col gap-0.5">{entry.items.map(section => item(section))}</ul>
         </li>
       );
@@ -110,13 +110,13 @@ export function SectionSidebar<T extends string>({
         <button type="button" aria-expanded={open} aria-controls={listId} title={entry.hint}
           onClick={() => toggleGroup(entry.group, !open)}
           className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition-colors ${containsActive
-            ? 'bg-slate-100 text-police-navy' : 'text-slate-700 hover:bg-slate-100'}`}>
-          <entry.Icon aria-hidden="true" className="size-4 shrink-0 text-police-crimson" />
-          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{entry.label}</span>
-          <ChevronDown aria-hidden="true" className={`size-3.5 shrink-0 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+            ? 'bg-white/10 text-white' : 'text-slate-200 hover:bg-white/10 hover:text-white'}`}>
+          <entry.Icon aria-hidden="true" className="size-4 shrink-0 text-white" />
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-bold tracking-[0.01em]">{entry.label}</span>
+          <ChevronDown aria-hidden="true" className={`size-3.5 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
-          <ul id={listId} className="ml-[17px] mt-0.5 flex flex-col gap-0.5 border-l border-slate-200 pl-1.5">
+          <ul id={listId} className="ml-[17px] mt-0.5 flex flex-col gap-0.5 border-l border-white/20 pl-1.5">
             {entry.items.map(section => item(section, true))}
           </ul>
         )}
@@ -134,7 +134,7 @@ export function SectionSidebar<T extends string>({
               <li key={id} className="shrink-0">
                 <button type="button" aria-current={isActive ? 'page' : undefined} onClick={() => onChange(id)}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${isActive
-                    ? 'bg-police-navy text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}>
+                    ? 'bg-police-crimson text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}>
                   <Icon aria-hidden="true" className={`size-4 shrink-0 ${isActive ? 'text-white' : 'text-police-crimson'}`} />
                   <span className="whitespace-nowrap">{label}</span>
                 </button>
@@ -148,7 +148,7 @@ export function SectionSidebar<T extends string>({
           className={`sticky flex flex-col gap-0.5 p-1.5 transition-[width] duration-200 ${collapsed ? 'w-14' : 'w-48'}`}>
           <button type="button" onClick={toggle} aria-expanded={!collapsed}
             aria-label={collapsed ? 'Expand menu' : 'Collapse menu'} title={collapsed ? 'Expand menu' : 'Collapse menu'}
-            className={`mb-0.5 flex items-center gap-2 rounded-lg py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 hover:bg-slate-100 hover:text-police-navy ${collapsed ? 'justify-center' : 'justify-between px-2.5'}`}>
+            className={`mb-0.5 flex items-center gap-2 rounded-lg py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-300 hover:bg-white/10 hover:text-white ${collapsed ? 'justify-center' : 'justify-between px-2.5'}`}>
             {!collapsed && <span className="truncate">{title}</span>}
             {collapsed ? <PanelLeftOpen aria-hidden="true" className="size-4 shrink-0" /> : <PanelLeftClose aria-hidden="true" className="size-4 shrink-0" />}
           </button>

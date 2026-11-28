@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { authorizeRequest } from '@/lib/auth/session-helper';
 import { isForceCategory, RANK_GROUPS } from '@/core/domain/ranks';
 import { officerAge } from '@/lib/officer-age';
-import { getAgeCutoffYears, listSelectionPool } from '@/modules/deployment/deployment.repository';
+import { getAgeCutoffYears, listPoliceStations, listSelectionPool } from '@/modules/deployment/deployment.repository';
 import { selectOfficers } from '@/modules/deployment/selection';
 
 /** SP only: randomly selects officers of one rank group from the chosen districts (preview, nothing is saved). */
@@ -28,14 +28,19 @@ export async function POST(req: Request) {
       ? [...new Set(body.districts.filter((item: unknown) => typeof item === 'string' && item.trim()).map((item: string) => item.trim()))] as string[]
       : [];
     if (districts.length > 100) return NextResponse.json({ error: 'Choose at most 100 districts.' }, { status: 400 });
+    const stations: string[] = Array.isArray(body.stations)
+      ? [...new Set(body.stations.filter((item: unknown) => typeof item === 'string' && item.trim()).map((item: string) => item.trim()))] as string[]
+      : [];
+    if (stations.length > 500) return NextResponse.json({ error: 'Choose at most 500 police stations.' }, { status: 400 });
 
     const cutoff = await getAgeCutoffYears();
     if (body.force && !isForceCategory(body.force)) return NextResponse.json({ error: 'Choose a force category.' }, { status: 400 });
-    const pool = await listSelectionPool([...group.ranks], districts, Boolean(body.includeAllotted), body.force || undefined);
+    const pool = await listSelectionPool([...group.ranks], districts, Boolean(body.includeAllotted), body.force || undefined, stations);
     const ages = new Map(pool.map(officer => [officer.id, officerAge(officer)]));
     if (poolOnly) {
       return NextResponse.json({
         ageCutoffYears: cutoff,
+        stationOptions: await listPoliceStations(districts),
         poolSize: pool.length,
         pool: pool.map(officer => ({ ...officer, age: ages.get(officer.id) ?? null })),
       });

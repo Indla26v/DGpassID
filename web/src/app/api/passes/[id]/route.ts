@@ -28,6 +28,7 @@ const EDITABLE_FIELDS = [
   'rank',
   'police_id_number',
   'police_unit_district',
+  'police_station',
   'police_zone',
   'police_sector_number',
   'police_sector_name',

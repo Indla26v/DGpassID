@@ -133,8 +133,11 @@ export interface IWritablePassRepository {
   ): Promise<{ updatedCount: number }>;
   upsertPolicePass(
     passData: Record<string, unknown>,
-    actor: SessionUser
-  ): Promise<{ pass: PassEntity; isNew: boolean }>;
+    actor: SessionUser,
+    /** aadhaarConflictAsNew: a row matching an officer by name / G.No but with a different Aadhaar is saved as a new
+     * officer (conflictWith names the existing pass) instead of being refused. */
+    options?: { aadhaarConflictAsNew?: boolean }
+  ): Promise<{ pass: PassEntity; isNew: boolean; conflictWith?: string }>;
 }
 
 export interface IPassRepository extends IReadablePassRepository, IWritablePassRepository {}

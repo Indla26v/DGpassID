@@ -48,7 +48,7 @@ For a local rollout check, run both backends against the same disposable Postgre
 
 ### Regional police printing
 
-After the shared schema and office migration, apply [police-force-passes.sql](web/db/police-force-passes.sql), [police-print-operators.sql](web/db/police-print-operators.sql), [apply-authority-signature.sql](web/db/apply-authority-signature.sql), [pass-authority-details.sql](web/db/pass-authority-details.sql), [police-direct-print.sql](web/db/police-direct-print.sql), and [bandobast-deployment.sql](web/db/bandobast-deployment.sql) in that order before running the Next.js app.
+After the shared schema and office migration, apply [police-force-passes.sql](web/db/police-force-passes.sql), [police-print-operators.sql](web/db/police-print-operators.sql), [apply-authority-signature.sql](web/db/apply-authority-signature.sql), [pass-authority-details.sql](web/db/pass-authority-details.sql), [police-direct-print.sql](web/db/police-direct-print.sql), [bandobast-deployment.sql](web/db/bandobast-deployment.sql), [local-officers.sql](web/db/local-officers.sql), [sms-messaging.sql](web/db/sms-messaging.sql), [custom-duty-points.sql](web/db/custom-duty-points.sql), [police-stations.sql](web/db/police-stations.sql) and [phase1-scheme-27-11.sql](web/db/phase1-scheme-27-11.sql) in that order before running the Next.js app.
 
 ### Bandobast deployment
 

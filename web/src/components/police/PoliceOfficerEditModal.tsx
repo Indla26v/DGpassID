@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
+import { StationInput } from './StationInput';
+import { usePoliceStations } from './usePoliceStations';
+import { canonicalStation } from '@/core/domain/police-stations';
 import { createPortal } from 'react-dom';
 import { useDialog } from '../common/useDialog';
 import { PillButton } from '../common/PillButton';
@@ -48,10 +51,11 @@ const PoliceOfficerEditModalContent: React.FC<
 
   // Form State
   const [fullName, setFullName] = useState(pass.full_name || '');
-  const [fatherName, setFatherName] = useState(pass.father_or_spouse_name || '');
   const [rank, setRank] = useState(normalizeRank(pass.rank || pass.designation_or_trade) || 'PC');
   const [dateOfBirth, setDateOfBirth] = useState(pass.date_of_birth?.slice(0, 10) || '');
   const [policeIdNumber, setPoliceIdNumber] = useState(pass.police_id_number || '');
+  const [policeStation, setPoliceStation] = useState(pass.police_station || '');
+  const masterStations = usePoliceStations();
   const [policeUnitDistrict, setPoliceUnitDistrict] = useState(
     pass.police_unit_district || pass.institution_other || ''
   );
@@ -130,11 +134,11 @@ const PoliceOfficerEditModalContent: React.FC<
     try {
       const payload: Record<string, unknown> = {
         full_name: fullName.trim(),
-        father_or_spouse_name: fatherName.trim(),
         rank: rank.trim(),
         designation_or_trade: rank.trim(),
         police_id_number: policeIdNumber.trim(),
         police_unit_district: policeUnitDistrict.trim(),
+        police_station: canonicalStation(masterStations, policeUnitDistrict, policeStation) ?? (policeStation.trim() || null),
         date_of_birth: dateOfBirth || null,
         mobile_number: cleanMob,
         govt_id_type: govtIdType,
@@ -312,19 +316,6 @@ const PoliceOfficerEditModalContent: React.FC<
                 />
               </div>
 
-              {/* Father / Spouse Name */}
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700">
-                  Father / Spouse Name
-                </label>
-                <input
-                  type="text"
-                  value={fatherName}
-                  onChange={(e) => setFatherName(e.target.value.toUpperCase())}
-                  placeholder="e.g. S. MAHABOOB BASHA"
-                  className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#0B2545] rounded-xl text-xs font-semibold text-slate-900 uppercase focus:outline-hidden focus:ring-1 focus:ring-[#0B2545] transition"
-                />
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Rank */}
@@ -360,6 +351,18 @@ const PoliceOfficerEditModalContent: React.FC<
                   placeholder="e.g. Sri Sathya Sai, Greyhounds, Tirupati"
                   className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#0B2545] rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#0B2545] transition"
                 />
+              </div>
+
+              {/* Police station: suggestions from the master list of the officer's district */}
+              <div className="space-y-1">
+                <label htmlFor="officer-police-station" className="block text-[11px] font-bold text-slate-700">
+                  Police Station
+                </label>
+                <span id="officer-police-station" className="block">
+                  <StationInput value={policeStation} onChange={setPoliceStation} district={policeUnitDistrict} stations={masterStations}
+                    ariaLabel="Police station"
+                    className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100/60 focus:bg-white border border-slate-200 focus:border-[#0B2545] rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#0B2545] transition" />
+                </span>
               </div>
 
               {/* Date of birth (used for the ASI/HC old:young selection ratio) */}

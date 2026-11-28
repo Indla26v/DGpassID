@@ -16,7 +16,7 @@ type ZoneSection = 'board' | 'instructions' | 'points' | 'scan' | 'export';
 
 const baseSections: SidebarSection<ZoneSection>[] = [
   { id: 'board', label: 'Zone Board', hint: 'Sectors, sub-sectors, allotted', Icon: LayoutGrid },
-  { id: 'instructions', label: 'Instructions', hint: 'Duty instructions and passports', Icon: ClipboardList },
+  { id: 'instructions', label: 'Duty Passport', hint: 'Duty instructions and passports', Icon: ClipboardList },
   { id: 'points', label: 'Duty Points', hint: 'Place officers on points', Icon: MapPinned },
   { id: 'scan', label: 'Scan & Issue', hint: 'Scan ID cards to issue them', Icon: ScanLine },
   { id: 'export', label: 'Export', hint: 'Download your officer list', Icon: FileDown },

@@ -29,6 +29,34 @@ export interface PassportPreviewValues {
   signatory: string;
 }
 
+interface FooterNames {
+  sectorIncharge: string;
+  subSectorIncharge: string | null;
+  topOfficers: { rank: string; label: string }[];
+  localOfficers: string[];
+}
+
+type SchemeZone = (typeof POLICE_BANDOBUSHT_ZONES)[number];
+interface PreviewArea { key: string; label: string; zone: SchemeZone; sector: SchemeZone['sectors'][number]; subSector: string | null }
+
+/** Sectors (or, where a sector has them, sub-sectors) covered by the targets, in scheme order. */
+function previewAreas(targets: InstructionTarget[]): PreviewArea[] {
+  const result = new Map<string, PreviewArea>();
+  for (const target of targets) {
+    const zone = POLICE_BANDOBUSHT_ZONES.find(item => item.name === target.zone);
+    if (!zone) continue;
+    for (const sector of zone.sectors.filter(item => !target.sector || item.number === target.sector)) {
+      const subs: (string | null)[] = target.subSector ? [target.subSector] : sector.subSectors?.length ? sector.subSectors : [null];
+      for (const subSector of subs) {
+        const key = [zone.name, sector.number, subSector ?? ''].join('|');
+        const label = `Zone ${zone.number} · ${sector.number}${subSector ? ` · ${subSector}` : ` - ${sector.name}`}`;
+        if (!result.has(key)) result.set(key, { key, label, zone, sector, subSector });
+      }
+    }
+  }
+  return [...result.values()];
+}
+
 const Placeholder = ({ children }: { children: React.ReactNode }) => <span className="italic text-slate-400">[{children}]</span>;
 
 /** The duty passport as printed for each officer, with officer-specific values shown as placeholders. */
@@ -48,31 +76,54 @@ export function PassportPreview({ values, authority }: {
   }, []);
 
   const period = passportPeriodLine(values);
-  const zones = [...new Set(values.targets.map(target => target.zone))];
-  const zone = zones.length === 1 ? POLICE_BANDOBUSHT_ZONES.find(item => item.name === zones[0]) : undefined;
-  const sectors = [...new Set(values.targets.filter(target => target.sector).map(target => target.sector as string))];
-  const subSectors = values.targets.filter(target => target.subSector).map(target => target.subSector as string);
-  const sector = zone && sectors.length === 1 ? zone.sectors.find(item => item.number === sectors[0]) : undefined;
+  // Every sector / sub-sector the instruction covers; the preview shows one of them as an officer posted there sees it.
+  const areas = previewAreas(values.targets);
+  const [chosenKey, setChosenKey] = useState('');
+  const area = areas.find(item => item.key === chosenKey) ?? areas[0];
+  const zone = area?.zone;
+  const sector = area?.sector;
+  const subSector = area?.subSector ?? null;
+  const footerArea = area
+    ? new URLSearchParams({ zone: area.zone.name, sector: area.sector.number, ...(subSector ? { subSector } : {}) }).toString()
+    : null;
+  const [footer, setFooter] = useState<FooterNames | null>(null);
+  useEffect(() => {
+    setFooter(null);
+    if (!footerArea) return;
+    const controller = new AbortController();
+    fetch(`/api/deployment/incharges/preview?${footerArea}`, { cache: 'no-store', signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => { if (data) setFooter(data as FooterNames); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [footerArea]);
   const signatoryLines = values.signatory.trim()
     ? values.signatory.split('\n').map(line => line.trim()).filter(Boolean)
     : [authority?.name || '', ...DEFAULT_SIGNATORY_DESIGNATION];
-  const text = (value: string) => value.trim() || <span className="text-slate-400">-</span>;
 
   const fields: [string, React.ReactNode][] = [
     ['Name of the officer', <Placeholder key="n">Officer name</Placeholder>],
     ['Rank', <Placeholder key="r">Rank</Placeholder>],
     ['Gen Number', <Placeholder key="g">Gen Number</Placeholder>],
-    ['Place of Duty', text(values.place_of_duty)],
     ['Component', zone ? `Zone ${zone.number}: ${zone.name}` : <Placeholder key="c">Officer&apos;s zone</Placeholder>],
     ['Sector Name', sector ? `${sector.number} - ${sector.name}` : <Placeholder key="s">Officer&apos;s sector</Placeholder>],
-    ['Deployment Point', subSectors.length === 1 && sectors.length === 1
-      ? <span key="d">{subSectors[0]} <Placeholder>- duty point</Placeholder></span>
-      : <Placeholder key="d">Officer&apos;s sub-sector / duty point</Placeholder>],
-    ['Batch', text(values.batch)],
+    ['Deployment Point', subSector
+      ? <span key="d">{subSector} <Placeholder>- duty point</Placeholder></span>
+      : <Placeholder key="d">Officer&apos;s duty point</Placeholder>],
   ];
 
   return (
     <div ref={frameRef} className="w-full space-y-2">
+      {areas.length > 1 && (
+        <label className="flex flex-wrap items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200">
+          <span className="font-semibold text-slate-700">Preview for</span>
+          <select value={area?.key} onChange={event => setChosenKey(event.target.value)}
+            className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800">
+            {areas.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
+          </select>
+          <span className="w-full text-xs text-slate-500">Each sector and sub-sector prints its own incharge names. {areas.length} areas in this instruction.</span>
+        </label>
+      )}
       {values.back_points.length > 0 && <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Front</p>}
       <div className="relative overflow-hidden rounded-md bg-white shadow-md ring-1 ring-slate-200" style={{ height: PAPER_H * scale }}>
         <div aria-label="Duty passport preview" className="absolute left-0 top-0 origin-top-left bg-white px-[72px] pt-[44px] text-slate-900"
@@ -86,7 +137,7 @@ export function PassportPreview({ values, authority }: {
             <p className="pt-[6px] text-center font-serif text-[29px] font-bold tracking-[0.06em] text-[#b22222]">{PASSPORT_TITLE}</p>
             <p className="text-center font-sans text-[10.5px] font-bold tracking-[0.04em] text-slate-800">{PASSPORT_CONFERENCE}</p>
             <p className="mt-[2px] text-center font-sans text-[10.5px] font-bold text-slate-600">
-              {period || <span className="italic text-rose-500">Set the duty dates and hours</span>}
+              {period || <span className="italic text-rose-500">Set the duty dates</span>}
             </p>
           </div>
           <div className="mt-[6px] border-t-[1.3px] border-black" />
@@ -136,16 +187,43 @@ export function PassportPreview({ values, authority }: {
           {/* Footer */}
           <div className="mt-[26px] flex items-start justify-between gap-6">
             <dl className="grid grid-cols-[126px_auto] gap-y-[6px] text-[12px]">
-              <dt className="font-serif text-[13px] font-bold">Sector Incharge</dt>
-              <dd className="font-sans text-slate-600">: <Placeholder>Senior-most officer of the sector, phone</Placeholder></dd>
-              <dt className="font-serif text-[13px] font-bold">Sub-sector Incharge</dt>
-              <dd className="font-sans text-slate-600">: <Placeholder>Senior-most officer of the sub-sector, phone</Placeholder></dd>
-              {['2nd', '3rd', '4th'].map(order => (
-                <React.Fragment key={order}>
-                  <dt className="font-serif text-[13px] font-bold"><Placeholder>{order} rank</Placeholder></dt>
-                  <dd className="font-sans text-slate-600">: <Placeholder>First officer, phone</Placeholder></dd>
-                </React.Fragment>
-              ))}
+              {footer ? (
+                <>
+                  <dt className="font-serif text-[13px] font-bold">Sector Incharge</dt>
+                  <dd className="font-sans text-slate-800">: {footer.sectorIncharge}</dd>
+                  {footer.subSectorIncharge !== null && (
+                    <>
+                      <dt className="font-serif text-[13px] font-bold">Sub-sector Incharge</dt>
+                      <dd className="font-sans text-slate-800">: {footer.subSectorIncharge}</dd>
+                    </>
+                  )}
+                  {footer.topOfficers.map((item, index) => (
+                    <React.Fragment key={index}>
+                      <dt className="font-serif text-[13px] font-bold">{item.rank}</dt>
+                      <dd className="font-sans text-slate-800">: {item.label}</dd>
+                    </React.Fragment>
+                  ))}
+                  {(footer.localOfficers ?? []).map((label, index) => (
+                    <React.Fragment key={`local-${index}`}>
+                      <dt className="font-serif text-[13px] font-bold">Local Officer</dt>
+                      <dd className="font-sans text-slate-800">: {label}</dd>
+                    </React.Fragment>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <dt className="font-serif text-[13px] font-bold">Sector Incharge</dt>
+                  <dd className="font-sans text-slate-600">: <Placeholder>Senior-most officer of the sector, phone</Placeholder></dd>
+                  <dt className="font-serif text-[13px] font-bold">Sub-sector Incharge</dt>
+                  <dd className="font-sans text-slate-600">: <Placeholder>Senior-most officer of the sub-sector, phone</Placeholder></dd>
+                  {['2nd', '3rd', '4th'].map(order => (
+                    <React.Fragment key={order}>
+                      <dt className="font-serif text-[13px] font-bold"><Placeholder>{order} rank</Placeholder></dt>
+                      <dd className="font-sans text-slate-600">: <Placeholder>First officer, phone</Placeholder></dd>
+                    </React.Fragment>
+                  ))}
+                </>
+              )}
             </dl>
             <div className="w-[250px] text-center font-serif">
               {authority?.signatureUrl
@@ -170,14 +248,16 @@ export function PassportPreview({ values, authority }: {
                 <span className="italic text-slate-400">[Officer name · G.No.]</span>
               </div>
               <p className="mt-[30px] text-center font-serif text-[19px] font-bold text-slate-900">{values.back_title.trim() || 'Brief Instructions'}</p>
-              <ol className="mt-[18px] space-y-[10px] font-sans text-[13px] leading-[1.45] text-slate-800">
+              {values.back_points.length === 1 ? (
+                <p className="mt-[18px] whitespace-pre-line text-justify font-sans text-[13.5px] leading-[1.55] text-slate-800">{values.back_points[0]}</p>
+              ) : <ol className="mt-[18px] space-y-[10px] font-sans text-[13px] leading-[1.45] text-slate-800">
                 {values.back_points.map((point, index) => (
                   <li key={index} className="flex gap-[10px]">
                     <span className="w-[22px] shrink-0 text-right font-bold">{index + 1}.</span>
                     <span>{point}</span>
                   </li>
                 ))}
-              </ol>
+              </ol>}
             </div>
           </div>
         </>

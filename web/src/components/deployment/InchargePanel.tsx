@@ -8,6 +8,8 @@ import { displayRank, rankSeniority } from '@/core/domain/ranks';
 import { isSeniorRank, SUB_SECTOR_OFFICERS, topRankOfficers } from '@/core/domain/duty-passport';
 import type { DeploymentOfficer } from '@/modules/deployment/deployment.repository';
 import type { InchargeRecord } from '@/modules/deployment/incharges.repository';
+import type { LocalOfficerRecord } from '@/modules/deployment/local-officers.repository';
+import { LocalOfficerLine, type LocalSlot } from './LocalOfficerLine';
 
 type Zone = (typeof POLICE_BANDOBUSHT_ZONES)[number];
 /** A place to allot: a sub-sector, or (subSector null) a sector that has no sub-sectors. */
@@ -32,6 +34,7 @@ const postedHere = (row: InchargeRecord) => row.posted_sector === row.sector && 
 export function InchargePanel() {
   const [incharges, setIncharges] = useState<InchargeRecord[]>([]);
   const [seniors, setSeniors] = useState<Record<string, number>>({});
+  const [localOfficers, setLocalOfficers] = useState<LocalOfficerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -54,8 +57,47 @@ export function InchargePanel() {
       })
       .catch(err => { if (err.name !== 'AbortError') setError(err.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    fetch('/api/deployment/local-officers', { cache: 'no-store', signal: controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load the Local Officers.');
+        setLocalOfficers(data.localOfficers);
+      })
+      .catch(err => { if (err.name !== 'AbortError') setError(err.message); });
     return () => controller.abort();
   }, [reload]);
+
+  // Local Officer per sector ('' sub-sector) and per sub-sector.
+  const localByKey = useMemo(() => {
+    const map = new Map<string, LocalOfficerRecord[]>();
+    for (const item of localOfficers) {
+      const key = `${item.zone}|${item.sector}|${item.sub_sector ?? ''}`;
+      map.set(key, [...(map.get(key) ?? []), item]);
+    }
+    return map;
+  }, [localOfficers]);
+  const saveLocal = useCallback(async (slot: LocalSlot, action: 'add' | 'remove', passId: string) => {
+    setError('');
+    setNotice('');
+    const place = slot.subSector ? `${slot.sector} · ${splitSub(slot.subSector)[0] || slot.subSector}` : slot.sector;
+    try {
+      const response = await fetch('/api/deployment/local-officers', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...slot, passId, action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save the Local Officer.');
+      setNotice(action === 'add' ? `${slot.zone} ${place}: Local Officer added.` : `${slot.zone} ${place}: Local Officer removed.`);
+      setReload(value => value + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the Local Officer.');
+      throw err;
+    }
+  }, []);
+  const localLine = (slot: LocalSlot) => (
+    <LocalOfficerLine slot={slot} current={localByKey.get(`${slot.zone}|${slot.sector}|${slot.subSector ?? ''}`) ?? []}
+      inherited={slot.subSector ? localByKey.get(`${slot.zone}|${slot.sector}|`) : undefined}
+      onChange={saveLocal} />
+  );
 
   const bySlot = useMemo(() => {
     const map = new Map<string, InchargeRecord[]>();
@@ -170,6 +212,7 @@ export function InchargePanel() {
             onCancel={() => setPicking(null)}
             onSave={passIds => save(slot, passIds, label)} />
         )}
+        {localLine(slot)}
       </li>
     );
   };
@@ -182,6 +225,10 @@ export function InchargePanel() {
           <p className="text-xs text-slate-500">
             Allot up to 3 officers for each sub-sector, or for a sector that has no sub-sectors: the 1st prints as the Incharge and the
             next two below it, with phone numbers. A sector with sub-sectors always uses its senior-most officer (SI and above) as Sector Incharge.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            <span className="font-semibold text-sky-800">Local Officer:</span> a contact from anywhere in the personnel directory, printed below the incharges.
+            Add one or more to a sector (all its sub-sectors use them) or give a sub-sector its own. One officer can be added to many places.
           </p>
         </div>
         <button type="button" onClick={() => setReload(value => value + 1)} aria-label="Refresh allotments"
@@ -232,6 +279,7 @@ export function InchargePanel() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{sector.number}</p>
                       <p className="text-sm font-medium leading-snug text-slate-800">{sector.name}</p>
                       <p className="mt-0.5 text-xs text-slate-500">Sector Incharge: senior-most officer (SI and above) posted in this sector, chosen automatically.</p>
+                      {localLine({ zone: zone.name, sector: sector.number, subSector: null })}
                     </li>
                     {sector.subSectors.map(subSector => row({ zone: zone.name, sector: sector.number, subSector }, sector.name))}
                   </React.Fragment>
@@ -288,9 +336,15 @@ function OfficerPicker({ slot, initial, onSave, onCancel }: {
   }))).slice(0, SUB_SECTOR_OFFICERS).map(officer => officer.id), [officers, slot.zone, slot.sector]);
   const seniorCount = (officers ?? []).filter(officer => isSeniorRank(officer.rank)).length;
 
-  const toggle = (id: string) => setChosen(previous => previous.includes(id)
+  // Print order follows rank, most senior first (the senior-most is the Incharge), whatever order they were ticked in;
+  // officers of the same rank keep the order they were ticked.
+  const bySeniority = (ids: string[]) => ids
+    .map((id, index) => ({ id, index, seniority: rankSeniority(byId.get(id)?.rank) }))
+    .sort((a, b) => a.seniority - b.seniority || a.index - b.index)
+    .map(item => item.id);
+  const toggle = (id: string) => setChosen(previous => bySeniority(previous.includes(id)
     ? previous.filter(item => item !== id)
-    : previous.length < SUB_SECTOR_OFFICERS ? [...previous, id] : previous);
+    : previous.length < SUB_SECTOR_OFFICERS ? [...previous, id] : previous));
 
   return (
     <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-white p-2.5">
@@ -315,10 +369,10 @@ function OfficerPicker({ slot, initial, onSave, onCancel }: {
       </div>
 
       <div className="rounded-lg bg-slate-50 px-3 py-2">
-        <p className="text-xs font-semibold text-slate-600">Chosen ({chosen.length} of {SUB_SECTOR_OFFICERS}), in print order</p>
+        <p className="text-xs font-semibold text-slate-600">Chosen ({chosen.length} of {SUB_SECTOR_OFFICERS}), in print order: senior-most rank first</p>
         {chosen.length ? (
           <ol className="mt-1 space-y-0.5 text-sm">
-            {chosen.map((id, index) => {
+            {bySeniority(chosen).map((id, index) => {
               const officer = byId.get(id);
               return (
                 <li key={id} className="flex items-center gap-2">
@@ -367,7 +421,7 @@ function OfficerPicker({ slot, initial, onSave, onCancel }: {
 
       <div className="flex justify-end gap-2">
         <PillButton type="button" size="sm" variant="ghost" onClick={onCancel}>Cancel</PillButton>
-        <PillButton type="button" size="sm" variant="crimson" disabled={busy || !chosen.length} onClick={() => { setBusy(true); onSave(chosen); }}>
+        <PillButton type="button" size="sm" variant="crimson" disabled={busy || !chosen.length} onClick={() => { setBusy(true); onSave(bySeniority(chosen)); }}>
           Save {chosen.length ? `(${chosen.length})` : ''}
         </PillButton>
       </div>

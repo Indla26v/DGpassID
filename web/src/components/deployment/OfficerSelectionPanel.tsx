@@ -5,6 +5,8 @@ import { Search, Shuffle, Send, UserPlus } from 'lucide-react';
 import { PillButton } from '../common/PillButton';
 import { CustomSelect } from '../common/CustomSelect';
 import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
+import { usePoliceStations } from '../police/usePoliceStations';
+import { stationKey, stationsOfDistrict } from '@/core/domain/police-stations';
 import { POLICE_BANDOBUSHT_ZONES } from '@/core/domain/police-zones';
 import { AP_DISTRICTS, POLICE_SPECIAL_UNITS } from '@/core/domain/districts';
 import { ASI_HC_GROUP, displayRank, FORCE_CATEGORIES, FORCE_LABELS, rankGroupOf, RANK_GROUPS } from '@/core/domain/ranks';
@@ -27,6 +29,28 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
   // '' = All ranks (default on opening).
   const [rankGroup, setRankGroup] = useState('');
   const [districts, setDistricts] = useState<string[]>([]);
+  const [stations, setStations] = useState<string[]>([]);
+  // Police stations recorded on officers in the chosen districts; merged below with the master list.
+  const [recordedStations, setRecordedStations] = useState<string[]>([]);
+  const masterStations = usePoliceStations();
+  // Master stations of the chosen districts (all when none chosen), then names officers recorded that are not in it.
+  const stationOptions = useMemo(() => {
+    const master = districts.length
+      ? districts.flatMap(item => stationsOfDistrict(masterStations, item).map(station => station.name))
+      : stationsOfDistrict(masterStations).map(station => station.name);
+    const keys = new Set(master.map(stationKey));
+    const extra = recordedStations.filter(name => !keys.has(stationKey(name)));
+    return [...new Set([...master, ...extra])].sort((a, b) => a.localeCompare(b));
+  }, [masterStations, recordedStations, districts]);
+  // Choosing other districts drops ticked stations that are not in them.
+  useEffect(() => {
+    if (!masterStations.length && !recordedStations.length) return;
+    const known = new Set(stationOptions.map(stationKey));
+    setStations(current => {
+      const kept = current.filter(item => known.has(stationKey(item)));
+      return kept.length === current.length ? current : kept;
+    });
+  }, [stationOptions, masterStations.length, recordedStations.length]);
   const [force, setForce] = useState('');
   const [includeAllotted, setIncludeAllotted] = useState(false);
   const [count, setCount] = useState('200');
@@ -73,7 +97,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
         const response = await fetch('/api/deployment/selection', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rankGroup, districts, force, includeAllotted, poolOnly: true }),
+          body: JSON.stringify({ rankGroup, districts, stations, force, includeAllotted, poolOnly: true }),
           signal: controller.signal,
         });
         const data = await response.json();
@@ -81,6 +105,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
         const officers: PoolOfficer[] = data.pool;
         setPool(officers);
         setAgeCutoff(current => current ?? data.ageCutoffYears);
+        setRecordedStations(data.stationOptions ?? []);
         const ids = new Set(officers.map(officer => officer.id));
         setSelected(current => new Set([...current].filter(id => ids.has(id))));
       } catch (err) {
@@ -90,7 +115,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
       }
     }, 250);
     return () => { controller.abort(); window.clearTimeout(timer); };
-  }, [rankGroup, districts, force, includeAllotted, reloadKey]);
+  }, [rankGroup, districts, stations, force, includeAllotted, reloadKey]);
 
   // A new rank or district set starts a fresh selection.
   useEffect(() => {
@@ -98,7 +123,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
     setSelected(new Set());
     setShowOnly('all');
     setPage(0);
-  }, [rankGroup, districts, force]);
+  }, [rankGroup, districts, stations, force]);
 
   const requested = Number(count);
   const isAsiHc = rankGroup === ASI_HC_GROUP;
@@ -147,7 +172,7 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
       const response = await fetch('/api/deployment/selection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rankGroup, districts, force, count: requested, includeAllotted }),
+        body: JSON.stringify({ rankGroup, districts, stations, force, count: requested, includeAllotted }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not select officers.');
@@ -219,12 +244,13 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
           </span>
           {force ? ` · ${FORCE_LABELS[force as keyof typeof FORCE_LABELS]}` : ''}
           {' '}{districts.length ? `in ${districts.length <= 2 ? districts.join(', ') : `${districts.length} districts`}` : 'in all districts'}
+          {stations.length ? ` · ${stations.length <= 2 ? stations.join(', ') : `${stations.length} police stations`}` : ''}
           {includeAllotted ? '' : ', not yet allotted'}
         </p>
       </div>
 
       {/* Filters */}
-      <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,2fr)]">
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_minmax(0,1.5fr)]">
         <div className="min-w-0 space-y-1">
           <span aria-hidden="true" className={fieldLabel}>Rank</span>
           <CustomSelect ariaLabel="Rank" value={rankGroup} searchable onChange={setRankGroup}
@@ -239,6 +265,11 @@ export function OfficerSelectionPanel({ knownDistricts, onAllotted }: { knownDis
           <span aria-hidden="true" className={fieldLabel}>Districts / units</span>
           <MultiSelectDropdown ariaLabel="Districts / units" options={districtOptions} value={districts} onChange={setDistricts}
             emptyLabel="All districts / units" />
+        </div>
+        <div className="min-w-0 space-y-1">
+          <span aria-hidden="true" className={fieldLabel}>Police stations</span>
+          <MultiSelectDropdown ariaLabel="Police stations" options={stationOptions} value={stations} onChange={setStations}
+            emptyLabel={stationOptions.length ? 'All police stations' : 'No police stations listed'} />
         </div>
       </div>
 

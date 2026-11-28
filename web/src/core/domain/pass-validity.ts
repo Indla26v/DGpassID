@@ -1,7 +1,7 @@
 import type { PassEntity } from './entities/pass.entity';
 
 export const PASS_VALID_TO = '2026-12-02';
-export const PASS_VALID_TO_LABEL = '30 Nov 2026';
+export const PASS_VALID_TO_LABEL = '2 Dec 2026';
 
 const conferenceDate = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',

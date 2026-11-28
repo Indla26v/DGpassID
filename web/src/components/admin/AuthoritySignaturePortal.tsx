@@ -230,10 +230,10 @@ export const AuthoritySignaturePortal: React.FC = () => {
     setCleanBackground(!fittedSource);
   };
 
+  // Removing asks for confirmation on the page (browser pop-ups can be blocked, which silently cancelled it).
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const handleRemove = async () => {
-    const confirmed = window.confirm('Are you sure you want to remove the current authority signature? Existing card signatures will remain preserved.');
-    if (!confirmed) return;
-
+    setConfirmRemove(false);
     setBusyAction('remove');
     setError(null);
     setSuccessMsg(null);
@@ -394,8 +394,15 @@ export const AuthoritySignaturePortal: React.FC = () => {
               <PillButton variant="crimson" size="sm" icon={<Layers aria-hidden="true" className="size-3.5" />} disabled={loading || fetching || !authorityName.trim()} onClick={() => void handleSave(true)}>
                 {busyAction === 'apply' ? 'Applying…' : 'Apply to unprinted passes'}
               </PillButton>
-              {savedSignature && (
-                <PillButton variant="ghost" size="sm" icon={<Trash2 aria-hidden="true" className="size-3.5" />} disabled={loading || fetching} onClick={() => void handleRemove()}>
+              {savedSignature && confirmRemove && (
+                <span role="alert" className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+                  <span className="min-w-0 flex-1">Remove the saved authority signature? Cards already printed keep their signature.</span>
+                  <PillButton variant="crimson" size="sm" disabled={loading || fetching} onClick={() => void handleRemove()}>Yes, remove</PillButton>
+                  <PillButton variant="ghost" size="sm" onClick={() => setConfirmRemove(false)}>Cancel</PillButton>
+                </span>
+              )}
+              {savedSignature && !confirmRemove && (
+                <PillButton variant="ghost" size="sm" icon={<Trash2 aria-hidden="true" className="size-3.5" />} disabled={loading || fetching} onClick={() => setConfirmRemove(true)}>
                   {busyAction === 'remove' ? 'Removing…' : 'Remove saved signature'}
                 </PillButton>
               )}

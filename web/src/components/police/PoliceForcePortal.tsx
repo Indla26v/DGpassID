@@ -21,7 +21,9 @@ import { managesAccounts } from '@/core/domain/offices';
 import { OfficerSelectionPanel } from '../deployment/OfficerSelectionPanel';
 import { PointAssignmentPortal } from '../deployment/PointAssignmentPortal';
 import { PrintTeamPortal } from '../print/PrintTeamPortal';
+import { PassportPrintButton } from '../deployment/PassportPrintButton';
 import { PoliceExportPanel } from './PoliceExportPanel';
+import { MessagingPanel } from '../messaging/MessagingPanel';
 import { PoliceDashboard } from './PoliceDashboard';
 import { InstructionsManager } from '../deployment/InstructionsManager';
 import { ScanIssuePanel } from './ScanIssuePanel';
@@ -40,6 +42,7 @@ import {
   Shuffle,
   MapPinned,
   FileDown,
+  MessageSquareText,
   LayoutDashboard,
   ClipboardList,
   ScanLine,
@@ -65,8 +68,8 @@ export const PoliceForcePortal: React.FC = () => {
   const { user } = useAuth();
   const isOperator = user.role === 'POLICE_PRINT';
   const isSp = user.role === 'ADMIN' && managesAccounts(user);
-  type PoliceSection = 'dashboard' | 'selection' | 'import' | 'points' | 'instructions' | 'incharges' | 'print' | 'scan' | 'export' | 'directory';
-  const [activeTab, setActiveTab] = useState<PoliceSection>('directory');
+  type PoliceSection = 'dashboard' | 'selection' | 'import' | 'points' | 'instructions' | 'incharges' | 'print' | 'scan' | 'export' | 'messages' | 'directory';
+  const [activeTab, setActiveTab] = useState<PoliceSection>(isSp ? 'dashboard' : 'directory');
   // Inner menu: SP sees every section; print operators the force directory and Scan & Issue.
   const sections: SidebarEntry<PoliceSection>[] = [
     ...(isSp ? [{ id: 'dashboard' as const, label: 'Dashboard', hint: 'Strength by zone, rank, district', Icon: LayoutDashboard }] : []),
@@ -78,6 +81,14 @@ export const PoliceForcePortal: React.FC = () => {
         { id: 'print' as const, label: 'Print Queue', hint: 'Police ID cards', Icon: Printer },
       ],
     }] : [{ id: 'directory' as const, label: 'Bandobast Force', hint: 'Directory, print and issue', Icon: Users }]),
+    // Import and Export under one dropdown for the SP; other office admins only have Import, shown on its own.
+    ...(isSp ? [{
+      group: 'documents', label: 'Documents', hint: 'Import and export personnel', Icon: FolderOpen,
+      items: [
+        { id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload },
+        { id: 'export' as const, label: 'Export', hint: 'Filtered personnel download', Icon: FileDown },
+      ],
+    }] : !isOperator ? [{ id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload }] : []),
     // The three steps of deploying the force, in order, under one dropdown.
     ...(isSp ? [{
       group: 'deployment', label: 'Deployment', hint: 'Selection, duty points, incharges', Icon: Network,
@@ -87,16 +98,9 @@ export const PoliceForcePortal: React.FC = () => {
         { id: 'incharges' as const, label: 'Incharges', hint: 'Sector and sub-sector incharges', Icon: UserCheck },
       ],
     }] : []),
-    ...(isSp ? [{ id: 'instructions' as const, label: 'Instructions', hint: 'Send duty instructions to zones', Icon: ClipboardList }] : []),
+    ...(isSp ? [{ id: 'instructions' as const, label: 'Duty Passport', hint: 'Duty instructions and passports for zones', Icon: ClipboardList }] : []),
+    ...(isSp ? [{ id: 'messages' as const, label: 'Messages', hint: 'Duty passport details as SMS to officers', Icon: MessageSquareText }] : []),
     ...(isSp || isOperator ? [{ id: 'scan' as const, label: 'Scan & Issue', hint: 'Scan ID cards to issue them', Icon: ScanLine }] : []),
-    // Import and Export under one dropdown for the SP; other office admins only have Import, shown on its own.
-    ...(isSp ? [{
-      group: 'documents', label: 'Documents', hint: 'Import and export personnel', Icon: FolderOpen,
-      items: [
-        { id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload },
-        { id: 'export' as const, label: 'Export', hint: 'Filtered personnel download', Icon: FileDown },
-      ],
-    }] : !isOperator ? [{ id: 'import' as const, label: 'Import', hint: 'Personnel upload', Icon: Upload }] : []),
   ];
   const [recentlyUpdated, setRecentlyUpdated] = useState(false);
 
@@ -266,7 +270,7 @@ export const PoliceForcePortal: React.FC = () => {
 
   return (
     <div className="min-w-0 space-y-4">
-      <OperationsHeader title="Police Bandobusth Force" description={isOperator ? 'Print and issue badges for your assigned zones and sectors.' : 'Personnel directory, duty assignments and pass distribution.'} />
+      {activeTab === 'dashboard' && <OperationsHeader title="Police Bandobusth Force Deployment" description={isOperator ? 'Print and issue badges for your assigned zones and sectors.' : 'Personnel directory, duty assignments and pass distribution.'} />}
 
       {/* The force counts are left out where they would repeat the dashboard or are not needed (Deployment). */}
       {!NO_COUNT_TILES.includes(activeTab) && <dl aria-label="Police force activity" className="grid grid-cols-2 gap-2.5 min-[460px]:grid-cols-3 md:grid-cols-5">
@@ -313,6 +317,8 @@ export const PoliceForcePortal: React.FC = () => {
       {(isSp || isOperator) && activeTab === 'scan' && <ScanIssuePanel />}
 
       {isSp && activeTab === 'export' && <PoliceExportPanel knownDistricts={stats?.districts ?? []} />}
+
+      {isSp && activeTab === 'messages' && <MessagingPanel knownDistricts={stats?.districts ?? []} />}
 
       {isSp && activeTab === 'selection' && (
         <OfficerSelectionPanel knownDistricts={stats?.districts ?? []} onAllotted={() => { fetchStats(); refresh(); }} />
@@ -527,6 +533,7 @@ export const PoliceForcePortal: React.FC = () => {
                               <Printer aria-hidden="true" className="size-3.5" />
                               <span className="hidden xl:inline">Print</span>
                             </button>
+                            {isSp && <PassportPrintButton passId={pass.id} assigned={Boolean(pass.police_zone && pass.police_sector_number)} />}
                             {!isCollected && pass.status === 'PRINTED' && pass.printed_count > 0 && (
                               issueTarget === pass.id ? (
                                 <>

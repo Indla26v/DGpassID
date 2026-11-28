@@ -53,7 +53,22 @@ export async function setAgeCutoffYears(value: number): Promise<void> {
 }
 
 /** Officers of the given ranks and districts, eligible for SP selection. */
-export async function listSelectionPool(ranks: string[], districts: string[], includeAllotted: boolean, force?: string): Promise<DeploymentOfficer[]> {
+/** Police stations of the officers in the chosen districts (all districts when none), for the selection filter. */
+export async function listPoliceStations(districts: string[]): Promise<string[]> {
+  const params: unknown[] = [];
+  const where = ["pass_type = 'POLICE_FORCE'", "status <> 'REVOKED'", "NULLIF(BTRIM(police_station), '') IS NOT NULL"];
+  if (districts.length) {
+    params.push(districts.map(district => district.toLowerCase()));
+    where.push(`LOWER(${policeDistrictSql}) = ANY($1::text[])`);
+  }
+  const res = await query<{ station: string }>(
+    `SELECT DISTINCT BTRIM(police_station) AS station FROM passes WHERE ${where.join(' AND ')} ORDER BY 1 LIMIT 2000`,
+    params,
+  );
+  return res.rows.map(row => row.station);
+}
+
+export async function listSelectionPool(ranks: string[], districts: string[], includeAllotted: boolean, force?: string, stations: string[] = []): Promise<DeploymentOfficer[]> {
   const params: unknown[] = [ranks.map(rank => rank.toUpperCase())];
   const where = [
     "pass_type = 'POLICE_FORCE'",
@@ -67,6 +82,10 @@ export async function listSelectionPool(ranks: string[], districts: string[], in
   if (force) {
     params.push(force);
     where.push(`force_category = $${params.length}`);
+  }
+  if (stations.length) {
+    params.push(stations.map(station => station.toLowerCase().replace(/[^a-z0-9]/g, '')));
+    where.push(`REGEXP_REPLACE(LOWER(COALESCE(police_station, '')), '[^a-z0-9]', '', 'g') = ANY($${params.length}::text[])`);
   }
   if (!includeAllotted) where.push("NULLIF(BTRIM(police_zone), '') IS NULL");
   const res = await query<DeploymentOfficer>(
